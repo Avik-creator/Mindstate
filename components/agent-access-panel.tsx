@@ -37,7 +37,7 @@ export function AgentAccessPanel() {
   return (
     <section className="rounded-lg border bg-card p-4">
       <div className="flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-md bg-secondary"><Bot className="size-4" /></div>
+        <div className="flex size-8 items-center justify-center rounded-md bg-accent/15 text-accent"><Bot className="size-4" /></div>
         <div><h2 className="text-sm font-semibold">Agent-first access</h2><p className="text-xs text-muted-foreground">One-time enrollment</p></div>
       </div>
       <p className="mt-4 text-xs leading-5 text-muted-foreground">Issue a 15-minute token so an agent can enroll itself in your workspace without your password.</p>

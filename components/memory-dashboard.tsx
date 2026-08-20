@@ -184,13 +184,13 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
 
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
           <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="flex flex-col gap-2"><p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace / Overview</p><h1 className="text-balance font-sans text-3xl font-semibold tracking-tight md:text-4xl">Memory your agents can use.</h1><p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">Capture context by hand, continue work across sessions, and expose only the right memory through a single Next.js API and MCP surface.</p></div>
+            <div className="flex flex-col gap-2"><p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-primary"><Sparkles className="size-3" />Workspace / Overview</p><h1 className="text-balance font-sans text-3xl font-semibold tracking-tight md:text-4xl">Memory your <span className="text-primary">agents</span> can use.</h1><p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">Capture context by hand, continue work across sessions, and expose only the right memory through a single Next.js API and MCP surface.</p></div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-primary" /><span>Private workspace</span><span>·</span><span>Neon connected</span></div>
           </section>
 
           <section aria-label="Workspace summary" className="grid border-y sm:grid-cols-2 lg:grid-cols-4">
-            {[[String(liveMemories.length), 'Memories', FileText], ['3', 'Active sessions', Bot], ['4', 'Projects', Folder], [String(liveMemories.filter((memory) => memory.type === 'handoff').length), 'Open handoffs', ArrowUpRight]].map(([value, label, Icon], index) => (
-              <div key={String(label)} className={`flex items-center gap-4 px-4 py-5 ${index < 3 ? 'lg:border-r' : ''} ${index % 2 === 0 ? 'sm:border-r lg:border-r' : ''}`}><div className="flex size-9 items-center justify-center rounded-md bg-secondary text-muted-foreground"><Icon className="size-4" /></div><div><div className="font-mono text-xl font-medium">{value as string}</div><div className="text-xs text-muted-foreground">{label as string}</div></div></div>
+            {[[String(liveMemories.length), 'Memories', FileText, 'text-chart-1'], ['3', 'Active sessions', Bot, 'text-chart-3'], ['4', 'Projects', Folder, 'text-chart-4'], [String(liveMemories.filter((memory) => memory.type === 'handoff').length), 'Open handoffs', ArrowUpRight, 'text-chart-5']].map(([value, label, Icon, color], index) => (
+              <div key={String(label)} className={`flex items-center gap-4 px-4 py-5 ${index < 3 ? 'lg:border-r' : ''} ${index % 2 === 0 ? 'sm:border-r lg:border-r' : ''}`}><div className={`flex size-9 items-center justify-center rounded-md bg-secondary ${color}`}><Icon className="size-4" /></div><div><div className="font-mono text-xl font-medium">{value as string}</div><div className="text-xs text-muted-foreground">{label as string}</div></div></div>
             ))}
           </section>
 
