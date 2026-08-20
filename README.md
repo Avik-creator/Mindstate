@@ -110,11 +110,23 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Agent connection
 
-Mindstate supports REST at `/api/v1` and MCP at `/api/mcp`.
+Mindstate supports REST at `/api/v1` and MCP at `/api/mcp`. The canonical agent guide is also published at [`https://mindstate.avikmukherjee.com/skill.md`](https://mindstate.avikmukherjee.com/skill.md).
 
-### 1. Enroll an agent
+### 1. Prepare a workspace for a new user
 
-From the dashboard, create a short-lived enrollment token. Redeem it once:
+An agent can initiate signup without handling the user&apos;s password:
+
+```bash
+curl -X POST https://YOUR_DOMAIN/api/v1/workspace-claims \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Workspace owner","email":"owner@example.com","agentName":"coding-agent"}'
+```
+
+Give the returned 30-minute `claimUrl` to the intended user. The user opens it and privately chooses their password. This does not enroll the agent or give it workspace access.
+
+### 2. Enroll an agent
+
+After the user claims the workspace, they create a short-lived enrollment token from the dashboard. Redeem it once:
 
 ```bash
 curl -X POST https://YOUR_DOMAIN/api/v1/agents/bootstrap \
@@ -128,7 +140,7 @@ Store the returned API key in a secret manager. It is shown only once and must b
 Authorization: Bearer YOUR_AGENT_API_KEY
 ```
 
-### 2. Use the REST API
+### 3. Use the REST API
 
 ```bash
 curl 'https://YOUR_DOMAIN/api/v1/memories?q=deployment&limit=20' \
@@ -152,7 +164,7 @@ curl -X POST https://YOUR_DOMAIN/api/v1/memories \
   }'
 ```
 
-### 3. Use MCP
+### 4. Use MCP
 
 Configure an MCP client to connect to:
 

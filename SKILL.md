@@ -1,11 +1,26 @@
 ---
-name: threadbase-agent
-description: Safely enroll an agent into a human-owned Threadbase workspace and use its REST and MCP memory interfaces. Use when an agent needs durable owner-scoped memory, self-enrollment, REST access, MCP tools, or credential handling guidance.
+name: mindstate-agent
+description: Safely prepare or enroll an agent into a human-owned Mindstate workspace and use its REST and MCP memory interfaces. Use when an agent needs durable owner-scoped memory, human-approved workspace creation, REST access, MCP tools, or credential handling guidance.
 ---
 
-# Threadbase agent integration
+# Mindstate agent integration
 
-Use Threadbase as durable, owner-scoped memory. Never request or store the owner password or browser session.
+Use Mindstate as durable, owner-scoped memory. Never request or store the owner password, claim token, or browser session.
+
+## Prepare a workspace for a new owner
+
+If the human does not have a Mindstate account, create a short-lived claim link on their behalf:
+
+```http
+POST /api/v1/workspace-claims
+Content-Type: application/json
+
+{"name":"<human-name>","email":"<human-email>","agentName":"<agent-name>","agentContext":{"runtime":"<runtime-name>"}}
+```
+
+Give the returned `claimUrl` only to the intended human. It expires after 30 minutes and is replaced if another claim is created for the same email. The human opens it, reviews the owner identity, and privately chooses a password. The agent never receives credentials, a browser session, or automatic workspace access.
+
+Creating a claim and enrolling an agent are separate security boundaries. After the owner claims the workspace, continue with the owner-approved enrollment flow below.
 
 ## Enroll once
 
