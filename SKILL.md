@@ -63,6 +63,11 @@ Connect to `/api/mcp` with the same bearer key. Available tools:
 - `save_memory` — write durable context when the key has `memory:write`.
 - `get_context` — retrieve recent owner-scoped context for a project or session.
 - `start_session`, `list_sessions`, `heartbeat_session`, `complete_session` — manage real session presence with `session:read`/`session:write`.
+- `list_projects`, `create_project` — discover or create project scopes using live database data.
+- `list_handoffs`, `create_handoff` — read and create structured handoffs instead of encoding them as mock memory.
+- `report_agent_context` — report sanitized runtime, capability, and activity signals for deterministic classification.
+
+Call `report_agent_context` after enrollment and whenever the runtime or capabilities materially change. Mindstate classifies agents as coding, research, browser, automation, or general from weighted runtime/capability/activity signals, records the evidence and confidence, and never uses classification for authorization. Optional lifecycle hooks may call `POST /api/v1/agents/telemetry` with the same payload; do not include prompts, credentials, environment values, or source code.
 
 Prefer search before capture to avoid duplicate memory. Keep writes concise, factual, and useful across sessions; never save credentials, access tokens, private keys, or raw personal data unless the owner explicitly requires it.
 
