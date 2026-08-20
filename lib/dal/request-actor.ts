@@ -7,7 +7,7 @@ import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, apiKeys } from '@/lib/infrastructure/db/postgres/schema'
 import type { Actor } from '@/lib/domain/memory'
 
-export function can(actor: Actor, scope: 'memory:read' | 'memory:write') {
+export function can(actor: Actor, scope: 'memory:read' | 'memory:write' | 'session:read' | 'session:write') {
   return !actor.credentialId || actor.scopes?.includes(scope) === true
 }
 

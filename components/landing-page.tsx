@@ -1,90 +1,83 @@
 import Link from 'next/link'
-import { ArrowRight, Braces, Check, CircleDot, Database, FileText, Search, ShieldCheck, Terminal } from 'lucide-react'
+import { ArrowRight, Braces, Check, Circle, FileText, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 
-const steps = [
-  ['Capture', 'Write decisions, constraints, preferences, and handoffs yourself—or let an agent save them.'],
-  ['Retrieve', 'Search by project, session, tags, or meaning to bring only relevant context into the next run.'],
-  ['Hand off', 'Publish a clean checkpoint so another agent can continue without reconstructing the work.'],
+const memoryRows = [
+  { type: 'Decision', title: 'Keep session presence heartbeat-based', detail: 'Avoid long-lived connections on serverless infrastructure.', tag: 'architecture' },
+  { type: 'Context', title: 'Owner scope every database query', detail: 'REST, dashboard, and MCP share the same application boundary.', tag: 'security' },
+  { type: 'Handoff', title: 'Homepage and session lifecycle are ready', detail: 'Continue from the latest durable checkpoint.', tag: 'release' },
 ]
 
 export function LandingPage() {
   return (
-    <main className="min-h-screen overflow-hidden bg-background text-foreground">
-      <header className="border-b border-border/70">
-        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5 lg:px-8" aria-label="Main navigation">
-          <Link href="/" className="flex items-center gap-3" aria-label="Threadbase home">
-            <span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Braces className="size-4" /></span>
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b bg-background/90 backdrop-blur">
+        <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6" aria-label="Main navigation">
+          <Link href="/" className="flex items-center gap-2" aria-label="Threadbase home">
+            <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"><Braces className="size-4" aria-hidden="true" /></span>
             <span className="text-sm font-semibold tracking-tight">Threadbase</span>
           </Link>
-          <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
-            <a href="#workflow" className="transition-colors hover:text-foreground">Workflow</a>
-            <a href="#integrate" className="transition-colors hover:text-foreground">Integrate</a>
-            <a href="#privacy" className="transition-colors hover:text-foreground">Privacy</a>
-          </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button>
-            <Button nativeButton={false} render={<Link href="/sign-up" />}>Start private workspace<ArrowRight data-icon="inline-end" /></Button>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button>
+            <Button size="sm" nativeButton={false} render={<Link href="/sign-up" />}>Get started<ArrowRight data-icon="inline-end" /></Button>
           </div>
         </nav>
       </header>
 
-      <section className="mx-auto grid max-w-7xl gap-14 px-5 py-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:px-8 lg:py-28">
-        <div className="flex flex-col items-start gap-7">
-          <Badge variant="outline" className="font-mono uppercase tracking-widest">Private agent memory</Badge>
-          <h1 className="max-w-2xl text-balance text-5xl font-semibold tracking-[-0.05em] sm:text-6xl lg:text-7xl">Your agents should remember what matters.</h1>
-          <p className="max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Capture context by hand, carry decisions across sessions, and give every agent a precise place to read and write durable memory.</p>
-          <div className="flex flex-wrap gap-3">
-            <Button size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Create your workspace<ArrowRight data-icon="inline-end" /></Button>
-            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>View dashboard</Button>
-          </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-muted-foreground">
-            <span className="flex items-center gap-2"><Check className="size-3 text-primary" />Manual + agent input</span>
-            <span className="flex items-center gap-2"><Check className="size-3 text-primary" />REST + MCP</span>
-            <span className="flex items-center gap-2"><Check className="size-3 text-primary" />Your database</span>
-          </div>
+      <section className="mx-auto flex max-w-4xl flex-col items-center px-4 pb-14 pt-20 text-center sm:px-6 sm:pt-28">
+        <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.18em]">Live memory for AI agents</Badge>
+        <h1 className="mt-6 max-w-3xl text-balance font-sans text-4xl font-semibold tracking-[-0.04em] sm:text-6xl">One place for agents to remember, work, and hand off.</h1>
+        <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Threadbase gives every session durable context and real presence—through a private dashboard, REST API, and native MCP tools.</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Button size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Create a workspace<ArrowRight data-icon="inline-end" /></Button>
+          <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>Open dashboard</Button>
         </div>
+        <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-2"><Check className="size-3 text-chart-3" />Live sessions</span>
+          <span className="flex items-center gap-2"><Check className="size-3 text-chart-3" />Durable memory</span>
+          <span className="flex items-center gap-2"><Check className="size-3 text-chart-3" />Owner-scoped access</span>
+        </div>
+      </section>
 
-        <div className="relative rounded-xl border bg-card p-2 shadow-2xl shadow-background">
-          <div className="flex items-center justify-between border-b px-4 py-3">
-            <div className="flex items-center gap-2"><CircleDot className="size-4 text-primary" /><span className="text-sm font-medium">Session handoff</span></div>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">ready to continue</span>
+      <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
+        <div className="overflow-hidden rounded-xl border bg-card shadow-xl">
+          <div className="flex h-11 items-center justify-between border-b px-4">
+            <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground"><Circle className="size-2 fill-chart-3 text-chart-3" />threadbase / workspace</div>
+            <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground"><span>REST</span><span>MCP</span><span>LIVE</span></div>
           </div>
-          <div className="flex flex-col gap-0 p-3">
-            {[
-              ['09:42', 'Decision recorded', 'Use a repository boundary so storage can change without touching tools.'],
-              ['09:48', 'Constraint attached', 'Every query must remain scoped to the authenticated owner.'],
-              ['10:03', 'Handoff published', 'Dashboard shell complete. Continue with API key management.'],
-            ].map(([time, title, text], index) => (
-              <div key={title} className="grid grid-cols-[52px_18px_1fr] gap-3">
-                <span className="pt-4 font-mono text-[10px] text-muted-foreground">{time}</span>
-                <div className="flex flex-col items-center"><span className="mt-5 size-2 rounded-full bg-primary" />{index < 2 && <span className="w-px flex-1 bg-border" />}</div>
-                <div className="border-b py-4 last:border-0"><p className="text-sm font-medium">{title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p></div>
+          <div className="grid min-h-96 lg:grid-cols-[210px_minmax(0,1fr)_250px]">
+            <aside className="hidden border-r p-3 lg:block">
+              <div className="px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Workspace</div>
+              {['Overview', 'Memories', 'Sessions', 'Handoffs'].map((item, index) => <div key={item} className={`flex items-center justify-between rounded-md px-2 py-2 text-xs ${index === 0 ? 'bg-secondary text-foreground' : 'text-muted-foreground'}`}><span>{item}</span>{item === 'Sessions' ? <span className="font-mono text-[10px] text-chart-3">2 live</span> : null}</div>)}
+              <div className="mt-6 px-2 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Agents</div>
+              <div className="flex items-center gap-2 px-2 py-2 text-xs"><Circle className="size-2 fill-chart-3 text-chart-3" />Coding agent</div>
+              <div className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground"><Circle className="size-2 fill-muted text-muted" />Research agent</div>
+            </aside>
+
+            <div className="min-w-0 p-4 sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="font-mono text-[10px] uppercase tracking-widest text-primary">Memory stream</p><h2 className="mt-1 font-sans text-lg font-semibold">Recent workspace context</h2></div>
+                <div className="relative sm:w-56"><Search className="absolute left-3 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" /><Input readOnly className="h-8 pl-8 font-mono text-[11px]" placeholder="Search memory..." /></div>
               </div>
-            ))}
-          </div>
-          <div className="grid gap-2 border-t p-3 sm:grid-cols-3">
-            {['Project: Threadbase', 'Agent: coding', '7 memories'].map((item) => <div key={item} className="rounded-md bg-secondary px-3 py-2 font-mono text-[10px] text-muted-foreground">{item}</div>)}
+              <div className="mt-5 overflow-hidden rounded-lg border">
+                {memoryRows.map((memory) => <article key={memory.title} className="flex gap-3 border-b p-4 last:border-b-0"><span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary"><FileText className="size-3 text-muted-foreground" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-sans text-sm font-medium">{memory.title}</h3><Badge variant="outline" className="text-[9px]">{memory.type}</Badge></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{memory.detail}</p><span className="mt-2 block font-mono text-[10px] text-primary">#{memory.tag}</span></div></article>)}
+              </div>
+            </div>
+
+            <aside className="border-t p-4 lg:border-l lg:border-t-0">
+              <div className="flex items-center justify-between"><h2 className="font-sans text-sm font-semibold">Live sessions</h2><span className="font-mono text-[10px] text-chart-3">heartbeat on</span></div>
+              <div className="mt-4 flex flex-col gap-3">
+                <div className="rounded-lg border bg-background p-3"><div className="flex items-center gap-2"><Circle className="size-2 fill-chart-3 text-chart-3" /><span className="truncate text-xs font-medium">Implement session APIs</span></div><p className="mt-2 font-mono text-[10px] text-muted-foreground">coding · seen now</p></div>
+                <div className="rounded-lg border bg-background p-3"><div className="flex items-center gap-2"><Circle className="size-2 fill-chart-3 text-chart-3" /><span className="truncate text-xs font-medium">Audit memory retrieval</span></div><p className="mt-2 font-mono text-[10px] text-muted-foreground">research · 34s ago</p></div>
+              </div>
+              <div className="mt-5 rounded-lg bg-secondary p-3"><p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Agent flow</p><code className="mt-3 block text-[11px] leading-6 text-foreground">start_session<br />heartbeat_session<br />save_memory<br />complete_session</code></div>
+            </aside>
           </div>
         </div>
+        <p className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Next.js · Neon · Drizzle · Better Auth · MCP</p>
       </section>
-
-      <section id="workflow" className="border-y bg-card/40">
-        <div className="mx-auto max-w-7xl px-5 py-20 lg:px-8">
-          <div className="max-w-2xl"><p className="font-mono text-xs uppercase tracking-[0.2em] text-primary">A continuous thread</p><h2 className="mt-4 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Stop rebuilding context at the start of every session.</h2></div>
-          <div className="mt-12 grid border-y md:grid-cols-3">{steps.map(([title, text], index) => <article key={title} className="flex flex-col gap-4 border-b p-6 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"><span className="font-mono text-xs text-primary">0{index + 1}</span><h3 className="text-lg font-semibold">{title}</h3><p className="text-sm leading-6 text-muted-foreground">{text}</p></article>)}</div>
-        </div>
-      </section>
-
-      <section id="integrate" className="mx-auto grid max-w-7xl gap-12 px-5 py-24 lg:grid-cols-2 lg:items-center lg:px-8">
-        <div className="flex flex-col gap-5"><Terminal className="size-7 text-primary" /><h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">One memory layer. Every interface.</h2><p className="max-w-xl text-base leading-7 text-muted-foreground">Use the dashboard when you want control. Use REST for scripts. Use the Next.js MCP endpoint when an agent needs native tools. Every path reaches the same validated application layer.</p><div className="grid gap-3 sm:grid-cols-2"><span className="flex items-center gap-3 text-sm"><FileText className="size-4 text-primary" />Manual capture</span><span className="flex items-center gap-3 text-sm"><Search className="size-4 text-primary" />Scoped retrieval</span><span className="flex items-center gap-3 text-sm"><Database className="size-4 text-primary" />Portable Postgres</span><span className="flex items-center gap-3 text-sm"><ShieldCheck className="size-4 text-primary" />Hashed API keys</span></div></div>
-        <pre className="overflow-x-auto rounded-xl border bg-card p-6 font-mono text-xs leading-7 text-muted-foreground"><code>{`POST /api/mcp\nAuthorization: Bearer tb_live_••••\n\ntools: [\n  search_memories,\n  save_memory,\n  get_context,\n  publish_handoff\n]`}</code></pre>
-      </section>
-
-      <section id="privacy" className="border-y bg-primary text-primary-foreground"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-16 md:flex-row md:items-center md:justify-between lg:px-8"><div><p className="font-mono text-xs uppercase tracking-widest opacity-70">Built for personal ownership</p><h2 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight">Private context, stored in your database, exposed on your terms.</h2></div><Button variant="secondary" size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Start building memory<ArrowRight data-icon="inline-end" /></Button></div></section>
-
-      <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-8"><span>Threadbase — durable context for agents.</span><span className="font-mono">Next.js · Drizzle · Postgres · MCP</span></footer>
     </main>
   )
 }

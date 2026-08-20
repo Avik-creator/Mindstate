@@ -25,9 +25,10 @@ export const projects = pgTable('projects', {
   createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 }, (t) => [index('projects_user_idx').on(t.userId)])
 export const agentSessions = pgTable('agent_sessions', {
-  id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), title: text('title').notNull(), agent: text('agent').notNull().default('manual'), status: text('status').notNull().default('active'),
+  id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), agentId: text('agentId'), title: text('title').notNull(), agent: text('agent').notNull().default('manual'), status: text('status').notNull().default('active'),
+  metadata: jsonb('metadata').$type<Record<string, string>>().notNull().default({}), lastHeartbeatAt: timestamp('lastHeartbeatAt').notNull().defaultNow(), endedAt: timestamp('endedAt'),
   createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (t) => [index('sessions_user_idx').on(t.userId)])
+}, (t) => [index('sessions_user_idx').on(t.userId), index('sessions_live_idx').on(t.userId, t.status, t.lastHeartbeatAt), index('sessions_agent_idx').on(t.userId, t.agentId)])
 export const memories = pgTable('memories', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), content: text('content').notNull(),
   type: text('type').notNull().default('context'), tags: jsonb('tags').$type<string[]>().notNull().default([]), source: text('source').notNull().default('manual'), actorType: text('actorType').notNull().default('user'), actorId: text('actorId'),

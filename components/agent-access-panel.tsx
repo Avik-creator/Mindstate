@@ -20,7 +20,7 @@ export function AgentAccessPanel() {
     const response = await fetch('/api/v1/agent-signup-tokens', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agentName: name, scopes: ['memory:read', 'memory:write'], expiresInMinutes: 15 }),
+      body: JSON.stringify({ agentName: name, scopes: ['memory:read', 'memory:write', 'session:read', 'session:write'], expiresInMinutes: 15 }),
     })
     const body = await response.json()
     setLoading(false)

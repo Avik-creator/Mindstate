@@ -44,6 +44,17 @@ Send `Authorization: Bearer <api-key>` and `Content-Type: application/json`.
 
 Validation failures use `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "issues": [...] } }`. Correct the named fields; do not blindly retry. Respect `memory:read` and `memory:write` scopes and treat `403` as a hard authorization boundary.
 
+## Live session lifecycle
+
+A session is live only while the agent is actively sending heartbeats. Start one before meaningful work, send a heartbeat every 30–60 seconds, attach captured memories with its `sessionId`, and complete it when work stops.
+
+- `POST /api/v1/sessions` with `{ "title": "...", "projectId": null, "agent": "...", "metadata": {} }` — start a session (`session:write`).
+- `GET /api/v1/sessions?limit=30` and `GET /api/v1/sessions/<uuid>` — inspect owner-scoped sessions (`session:read`).
+- `POST /api/v1/sessions/<uuid>/heartbeat` — keep an active session live (`session:write`).
+- `DELETE /api/v1/sessions/<uuid>` — complete the session (`session:write`).
+
+The live TTL is 90 seconds. If heartbeats stop, an active session becomes `stale`; this is deliberate crash/disconnect detection, not an error. Resume it with a heartbeat only if the same work is still running, otherwise start a new session.
+
 ## MCP
 
 Connect to `/api/mcp` with the same bearer key. Available tools:
@@ -51,6 +62,7 @@ Connect to `/api/mcp` with the same bearer key. Available tools:
 - `search_memories` — search owner-scoped context by query, project, session, or type.
 - `save_memory` — write durable context when the key has `memory:write`.
 - `get_context` — retrieve recent owner-scoped context for a project or session.
+- `start_session`, `list_sessions`, `heartbeat_session`, `complete_session` — manage real session presence with `session:read`/`session:write`.
 
 Prefer search before capture to avoid duplicate memory. Keep writes concise, factual, and useful across sessions; never save credentials, access tokens, private keys, or raw personal data unless the owner explicitly requires it.
 

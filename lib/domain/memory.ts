@@ -2,7 +2,7 @@ export type Actor = {
   userId: string
   credentialId?: string
   agentId?: string
-  scopes?: Array<'memory:read' | 'memory:write'>
+  scopes?: Array<'memory:read' | 'memory:write' | 'session:read' | 'session:write'>
 }
 
 export type MemoryType = 'decision' | 'context' | 'preference' | 'handoff'

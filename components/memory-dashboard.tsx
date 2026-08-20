@@ -32,16 +32,17 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import { projects, sessions, type MemoryKind } from '@/lib/demo-data'
+import { projects, type MemoryKind } from '@/lib/demo-data'
 import { authClient } from '@/lib/auth-client'
 import { AgentAccessPanel } from '@/components/agent-access-panel'
 
 type DashboardMemory = { id: string; title: string; content: string; type: MemoryKind; projectId: string | null; tags: string[]; source: string; updatedAt: string }
-const fetcher = async (url: string) => {
+type DashboardSession = { id: string; title: string; agent: string; presence: 'live' | 'stale' | 'completed'; memoryCount: number; lastHeartbeatAt: string }
+const fetcher = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url)
   const body = await response.json()
-  if (!response.ok) throw new Error(body.error?.message ?? 'Could not load memories')
-  return body as { data: DashboardMemory[] }
+  if (!response.ok) throw new Error(body.error?.message ?? 'Could not load workspace data')
+  return body as T
 }
 
 const navigation = [
@@ -167,8 +168,11 @@ function MemoryRow({ memory }: { memory: DashboardMemory }) {
 
 export function MemoryDashboard({ user }: { user: { name: string; email: string } }) {
   const [query, setQuery] = useState('')
-  const { data, error, isLoading, mutate } = useSWR('/api/v1/memories?limit=100', fetcher)
+  const { data, error, isLoading, mutate } = useSWR<{ data: DashboardMemory[] }>('/api/v1/memories?limit=100', fetcher)
+  const { data: sessionData } = useSWR<{ data: DashboardSession[] }>('/api/v1/sessions?limit=30', fetcher, { refreshInterval: 15_000 })
   const liveMemories = useMemo(() => data?.data ?? [], [data])
+  const liveSessions = useMemo(() => sessionData?.data ?? [], [sessionData])
+  const activeSessionCount = liveSessions.filter((session) => session.presence === 'live').length
   const filtered = useMemo(() => liveMemories.filter((memory) => `${memory.title} ${memory.content} ${memory.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [liveMemories, query])
 
   return (
@@ -189,7 +193,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
           </section>
 
           <section aria-label="Workspace summary" className="grid border-y sm:grid-cols-2 lg:grid-cols-4">
-            {[[String(liveMemories.length), 'Memories', FileText, 'text-chart-1'], ['3', 'Active sessions', Bot, 'text-chart-3'], ['4', 'Projects', Folder, 'text-chart-4'], [String(liveMemories.filter((memory) => memory.type === 'handoff').length), 'Open handoffs', ArrowUpRight, 'text-chart-5']].map(([value, label, Icon, color], index) => (
+            {[[String(liveMemories.length), 'Memories', FileText, 'text-chart-1'], [String(activeSessionCount), 'Active sessions', Bot, 'text-chart-3'], ['4', 'Projects', Folder, 'text-chart-4'], [String(liveMemories.filter((memory) => memory.type === 'handoff').length), 'Open handoffs', ArrowUpRight, 'text-chart-5']].map(([value, label, Icon, color], index) => (
               <div key={String(label)} className={`flex items-center gap-4 px-4 py-5 ${index < 3 ? 'lg:border-r' : ''} ${index % 2 === 0 ? 'sm:border-r lg:border-r' : ''}`}><div className={`flex size-9 items-center justify-center rounded-md bg-secondary ${color}`}><Icon className="size-4" /></div><div><div className="font-mono text-xl font-medium">{value as string}</div><div className="text-xs text-muted-foreground">{label as string}</div></div></div>
             ))}
           </section>
@@ -201,7 +205,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
             </section>
 
             <aside className="flex flex-col gap-6">
-              <section className="rounded-lg border bg-card"><div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Live sessions</h2></div><div className="flex flex-col">{sessions.map((session) => <div key={session.title} className="flex gap-3 border-b p-4 last:border-b-0"><div className="mt-1"><span className={`block size-2 rounded-full ${session.status === 'active' ? 'bg-primary' : 'bg-muted-foreground/40'}`} /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{session.title}</div><div className="mt-1 font-mono text-[10px] text-muted-foreground">{session.agent} · {session.memories} memories</div></div><span className="font-mono text-[10px] text-muted-foreground">{session.time}</span></div>)}</div></section>
+              <section className="rounded-lg border bg-card"><div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Live sessions</h2></div><div className="flex flex-col">{liveSessions.length ? liveSessions.slice(0, 6).map((session) => <div key={session.id} className="flex gap-3 border-b p-4 last:border-b-0"><div className="mt-1"><span className={`block size-2 rounded-full ${session.presence === 'live' ? 'bg-chart-2' : session.presence === 'stale' ? 'bg-chart-4' : 'bg-muted-foreground/40'}`} /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{session.title}</div><div className="mt-1 font-mono text-[10px] text-muted-foreground">{session.agent} · {session.memoryCount} memories</div></div><span className="font-mono text-[10px] capitalize text-muted-foreground">{session.presence}</span></div>) : <div className="p-4 text-xs leading-5 text-muted-foreground">No sessions yet. Agents appear here when they call start_session.</div>}</div></section>
               <AgentAccessPanel />
               <section className="rounded-lg border bg-card p-4"><div className="flex items-center gap-2"><div className="flex size-8 items-center justify-center rounded-md bg-secondary"><Database className="size-4" /></div><div><h2 className="text-sm font-semibold">Persistence active</h2><p className="text-xs text-muted-foreground">Neon + Drizzle + Better Auth</p></div></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Your private workspace is backed by Postgres with owner-scoped reads, writes, API keys, and MCP access.</p><div className="mt-4 flex items-center gap-2 text-xs text-primary"><Check className="size-4" />Migration applied</div></section>
               <section className="rounded-lg border bg-card p-4"><div className="flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">MCP endpoint</span><Badge variant="secondary">Next.js</Badge></div><code className="mt-3 block truncate rounded-md bg-secondary p-3 font-mono text-[11px]">/api/mcp</code><Button variant="ghost" size="sm" className="mt-2 w-full"><Copy data-icon="inline-start" />Copy endpoint</Button></section>
