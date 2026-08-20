@@ -4,7 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, LockKeyhole } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 
 export function WorkspaceClaimForm({ token, name, email, agentName }: { token: string; name: string; email: string; agentName: string | null }) {
@@ -55,12 +58,14 @@ export function WorkspaceClaimForm({ token, name, email, agentName }: { token: s
           <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Email</dt><dd className="truncate font-mono text-xs">{email}</dd></div>
         </dl>
 
-        <form action={submit} className="mt-8 flex flex-col gap-5">
-          <label className="flex flex-col gap-2 text-sm font-medium">Create password<Input name="password" type="password" minLength={8} maxLength={128} required autoComplete="new-password" /></label>
-          <label className="flex flex-col gap-2 text-sm font-medium">Confirm password<Input name="confirmation" type="password" minLength={8} maxLength={128} required autoComplete="new-password" /></label>
-          <label className="flex items-start gap-3 text-sm leading-6 text-muted-foreground"><input name="consent" type="checkbox" required className="mt-1 size-4 accent-primary" /><span>I understand this creates my private owner account. The initiating agent will not receive access unless I enroll it later.</span></label>
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" size="lg" disabled={pending}>{pending ? 'Creating workspace…' : 'Claim workspace'}<ArrowRight data-icon="inline-end" /></Button>
+        <form action={submit} className="mt-8">
+          <FieldGroup>
+            <Field><FieldLabel htmlFor="claim-password">Create password</FieldLabel><Input id="claim-password" name="password" type="password" minLength={8} maxLength={128} required autoComplete="new-password" /></Field>
+            <Field><FieldLabel htmlFor="claim-confirmation">Confirm password</FieldLabel><Input id="claim-confirmation" name="confirmation" type="password" minLength={8} maxLength={128} required autoComplete="new-password" /></Field>
+            <Field orientation="horizontal"><Checkbox id="claim-consent" name="consent" required /><FieldLabel htmlFor="claim-consent" className="font-normal leading-6 text-muted-foreground">I understand this creates my private owner account. The initiating agent will not receive access unless I enroll it later.</FieldLabel></Field>
+            {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
+            <Button type="submit" size="lg" disabled={pending}>{pending ? 'Creating workspace…' : 'Claim workspace'}<ArrowRight data-icon="inline-end" /></Button>
+          </FieldGroup>
         </form>
       </section>
     </main>
