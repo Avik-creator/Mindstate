@@ -24,8 +24,8 @@ export function LandingPage() {
             <a href="#privacy" className="transition-colors hover:text-foreground">Privacy</a>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" render={<Link href="/sign-in" />}>Sign in</Button>
-            <Button render={<Link href="/sign-up" />}>Start private workspace<ArrowRight data-icon="inline-end" /></Button>
+            <Button variant="ghost" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button>
+            <Button nativeButton={false} render={<Link href="/sign-up" />}>Start private workspace<ArrowRight data-icon="inline-end" /></Button>
           </div>
         </nav>
       </header>
@@ -36,8 +36,8 @@ export function LandingPage() {
           <h1 className="max-w-2xl text-balance text-5xl font-semibold tracking-[-0.05em] sm:text-6xl lg:text-7xl">Your agents should remember what matters.</h1>
           <p className="max-w-xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Capture context by hand, carry decisions across sessions, and give every agent a precise place to read and write durable memory.</p>
           <div className="flex flex-wrap gap-3">
-            <Button size="lg" render={<Link href="/sign-up" />}>Create your workspace<ArrowRight data-icon="inline-end" /></Button>
-            <Button size="lg" variant="outline" render={<Link href="/dashboard" />}>View dashboard</Button>
+            <Button size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Create your workspace<ArrowRight data-icon="inline-end" /></Button>
+            <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>View dashboard</Button>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-xs text-muted-foreground">
             <span className="flex items-center gap-2"><Check className="size-3 text-primary" />Manual + agent input</span>
@@ -82,7 +82,7 @@ export function LandingPage() {
         <pre className="overflow-x-auto rounded-xl border bg-card p-6 font-mono text-xs leading-7 text-muted-foreground"><code>{`POST /api/mcp\nAuthorization: Bearer tb_live_••••\n\ntools: [\n  search_memories,\n  save_memory,\n  get_context,\n  publish_handoff\n]`}</code></pre>
       </section>
 
-      <section id="privacy" className="border-y bg-primary text-primary-foreground"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-16 md:flex-row md:items-center md:justify-between lg:px-8"><div><p className="font-mono text-xs uppercase tracking-widest opacity-70">Built for personal ownership</p><h2 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight">Private context, stored in your database, exposed on your terms.</h2></div><Button variant="secondary" size="lg" render={<Link href="/sign-up" />}>Start building memory<ArrowRight data-icon="inline-end" /></Button></div></section>
+      <section id="privacy" className="border-y bg-primary text-primary-foreground"><div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-16 md:flex-row md:items-center md:justify-between lg:px-8"><div><p className="font-mono text-xs uppercase tracking-widest opacity-70">Built for personal ownership</p><h2 className="mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight">Private context, stored in your database, exposed on your terms.</h2></div><Button variant="secondary" size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Start building memory<ArrowRight data-icon="inline-end" /></Button></div></section>
 
       <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between lg:px-8"><span>Threadbase — durable context for agents.</span><span className="font-mono">Next.js · Drizzle · Postgres · MCP</span></footer>
     </main>

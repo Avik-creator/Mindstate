@@ -17,6 +17,7 @@ import {
   Folder,
   KeyRound,
   Layers3,
+  LogOut,
   Menu,
   Plus,
   Search,
@@ -31,6 +32,7 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { memories, projects, sessions, type MemoryKind } from '@/lib/demo-data'
+import { authClient } from '@/lib/auth-client'
 
 const navigation = [
   { label: 'Overview', icon: Layers3 },
@@ -53,7 +55,7 @@ function Brand() {
   )
 }
 
-function SidebarContent() {
+function SidebarContent({ user }: { user: { name: string; email: string } }) {
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center"><Brand /></div>
@@ -85,9 +87,9 @@ function SidebarContent() {
         <button type="button" className="flex h-9 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><KeyRound className="size-4" />API keys</button>
         <button type="button" className="flex h-9 items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><Settings2 className="size-4" />Settings</button>
         <div className="mt-2 flex items-center gap-3 rounded-md border border-sidebar-border p-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-secondary font-mono text-xs font-semibold">AY</div>
-          <div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">Personal workspace</div><div className="truncate text-[11px] text-muted-foreground">Owner</div></div>
-          <ChevronDown className="size-4 text-muted-foreground" />
+          <div className="flex size-8 items-center justify-center rounded-md bg-secondary font-mono text-xs font-semibold">{user.name.slice(0, 2).toUpperCase()}</div>
+          <div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{user.name}</div><div className="truncate text-[11px] text-muted-foreground">{user.email}</div></div>
+          <button type="button" aria-label="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = '/' } } })} className="rounded p-1 text-muted-foreground hover:text-foreground"><LogOut className="size-4" /></button>
         </div>
       </div>
     </div>
@@ -137,16 +139,16 @@ function MemoryRow({ memory }: { memory: (typeof memories)[number] }) {
   )
 }
 
-export function MemoryDashboard() {
+export function MemoryDashboard({ user }: { user: { name: string; email: string } }) {
   const [query, setQuery] = useState('')
   const filtered = useMemo(() => memories.filter((memory) => `${memory.title} ${memory.content} ${memory.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [query])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border lg:block"><SidebarContent /></aside>
+      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border lg:block"><SidebarContent user={user} /></aside>
       <main className="min-h-screen lg:pl-60">
         <header className="sticky top-0 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
-          <Sheet><SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}><Menu /><span className="sr-only">Open navigation</span></SheetTrigger><SheetContent side="left" className="w-60 p-0"><SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle><SheetDescription>Workspace navigation</SheetDescription></SheetHeader><SidebarContent /></SheetContent></Sheet>
+          <Sheet><SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}><Menu /><span className="sr-only">Open navigation</span></SheetTrigger><SheetContent side="left" className="w-60 p-0"><SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle><SheetDescription>Workspace navigation</SheetDescription></SheetHeader><SidebarContent user={user} /></SheetContent></Sheet>
           <div className="relative max-w-xl flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-9 font-mono text-xs" placeholder="Search memory..." aria-label="Search memories" /></div>
           <Button variant="outline" size="sm" className="hidden sm:inline-flex"><Command data-icon="inline-start" />Command</Button>
           <NewMemoryDialog />
@@ -155,7 +157,7 @@ export function MemoryDashboard() {
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
           <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="flex flex-col gap-2"><p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace / Overview</p><h1 className="text-balance font-sans text-3xl font-semibold tracking-tight md:text-4xl">Memory your agents can use.</h1><p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground">Capture context by hand, continue work across sessions, and expose only the right memory through a single Next.js API and MCP surface.</p></div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-primary" /><span>Local preview</span><span>·</span><span>Database not connected</span></div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="size-2 rounded-full bg-primary" /><span>Private workspace</span><span>·</span><span>Neon connected</span></div>
           </section>
 
           <section aria-label="Workspace summary" className="grid border-y sm:grid-cols-2 lg:grid-cols-4">
@@ -172,7 +174,7 @@ export function MemoryDashboard() {
 
             <aside className="flex flex-col gap-6">
               <section className="rounded-lg border bg-card"><div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Live sessions</h2></div><div className="flex flex-col">{sessions.map((session) => <div key={session.title} className="flex gap-3 border-b p-4 last:border-b-0"><div className="mt-1"><span className={`block size-2 rounded-full ${session.status === 'active' ? 'bg-primary' : 'bg-muted-foreground/40'}`} /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{session.title}</div><div className="mt-1 font-mono text-[10px] text-muted-foreground">{session.agent} · {session.memories} memories</div></div><span className="font-mono text-[10px] text-muted-foreground">{session.time}</span></div>)}</div></section>
-              <section className="rounded-lg border bg-card p-4"><div className="flex items-center gap-2"><div className="flex size-8 items-center justify-center rounded-md bg-secondary"><Database className="size-4" /></div><div><h2 className="text-sm font-semibold">Connect persistence</h2><p className="text-xs text-muted-foreground">Neon + Better Auth</p></div></div><p className="mt-4 text-xs leading-5 text-muted-foreground">The interface is ready. Connect Neon and add the auth secret to enable private storage, API keys, and MCP writes.</p><Button variant="outline" size="sm" className="mt-4 w-full">Setup guide<Sparkles data-icon="inline-end" /></Button></section>
+              <section className="rounded-lg border bg-card p-4"><div className="flex items-center gap-2"><div className="flex size-8 items-center justify-center rounded-md bg-secondary"><Database className="size-4" /></div><div><h2 className="text-sm font-semibold">Persistence active</h2><p className="text-xs text-muted-foreground">Neon + Drizzle + Better Auth</p></div></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Your private workspace is backed by Postgres with owner-scoped reads, writes, API keys, and MCP access.</p><div className="mt-4 flex items-center gap-2 text-xs text-primary"><Check className="size-4" />Migration applied</div></section>
               <section className="rounded-lg border bg-card p-4"><div className="flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">MCP endpoint</span><Badge variant="secondary">Next.js</Badge></div><code className="mt-3 block truncate rounded-md bg-secondary p-3 font-mono text-[11px]">/api/mcp</code><Button variant="ghost" size="sm" className="mt-2 w-full"><Copy data-icon="inline-start" />Copy endpoint</Button></section>
             </aside>
           </div>
