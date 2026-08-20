@@ -9,8 +9,17 @@ const sourceCodePro = Source_Code_Pro({ subsets: ['latin'], variable: '--font-so
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
-  title: 'Threadbase — Private agent memory',
+  metadataBase: new URL('https://mindstate.avikmukherjee.com'),
+  title: 'Mindstate — Private agent memory',
   description: 'Capture, search, and share durable context across agent sessions.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Mindstate — Private agent memory',
+    description: 'Capture, search, and share durable context across agent sessions.',
+    url: 'https://mindstate.avikmukherjee.com',
+    siteName: 'Mindstate',
+    type: 'website',
+  },
   generator: 'v0.app',
   icons: {
     icon: [

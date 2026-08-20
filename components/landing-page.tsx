@@ -15,9 +15,9 @@ export function LandingPage() {
     <main className="min-h-screen bg-background text-foreground">
       <header className="border-b bg-background/90 backdrop-blur">
         <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6" aria-label="Main navigation">
-          <Link href="/" className="flex items-center gap-2" aria-label="Threadbase home">
+          <Link href="/" className="flex items-center gap-2" aria-label="Mindstate home">
             <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground"><Braces className="size-4" aria-hidden="true" /></span>
-            <span className="text-sm font-semibold tracking-tight">Threadbase</span>
+            <span className="text-sm font-semibold tracking-tight">Mindstate</span>
           </Link>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/sign-in" />}>Sign in</Button>
@@ -29,7 +29,7 @@ export function LandingPage() {
       <section className="mx-auto flex max-w-4xl flex-col items-center px-4 pb-14 pt-20 text-center sm:px-6 sm:pt-28">
         <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-[0.18em]">Live memory for AI agents</Badge>
         <h1 className="mt-6 max-w-3xl text-balance font-sans text-4xl font-semibold tracking-[-0.04em] sm:text-6xl">One place for agents to remember, work, and hand off.</h1>
-        <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Threadbase gives every session durable context and real presence—through a private dashboard, REST API, and native MCP tools.</p>
+        <p className="mt-5 max-w-2xl text-pretty text-base leading-7 text-muted-foreground sm:text-lg">Mindstate gives every session durable context and real presence—through a private dashboard, REST API, and native MCP tools.</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Button size="lg" nativeButton={false} render={<Link href="/sign-up" />}>Create a workspace<ArrowRight data-icon="inline-end" /></Button>
           <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}>Open dashboard</Button>
@@ -44,7 +44,7 @@ export function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 pb-24 sm:px-6">
         <div className="overflow-hidden rounded-xl border bg-card shadow-xl">
           <div className="flex h-11 items-center justify-between border-b px-4">
-            <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground"><Circle className="size-2 fill-chart-3 text-chart-3" />threadbase / workspace</div>
+            <div className="flex items-center gap-2 font-mono text-[11px] text-muted-foreground"><Circle className="size-2 fill-chart-3 text-chart-3" />mindstate / workspace</div>
             <div className="flex items-center gap-3 font-mono text-[10px] text-muted-foreground"><span>REST</span><span>MCP</span><span>LIVE</span></div>
           </div>
           <div className="grid min-h-96 lg:grid-cols-[210px_minmax(0,1fr)_250px]">

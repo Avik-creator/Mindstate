@@ -75,7 +75,7 @@ const mcp = createMcpHandler((server) => {
 
 async function handler(request: Request) {
   const requestActor = await actorFromRequest(request)
-  if (!requestActor) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="Threadbase MCP"' } })
+  if (!requestActor) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="Mindstate MCP"' } })
   return actorContext.run(requestActor, () => mcp(request))
 }
 

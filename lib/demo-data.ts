@@ -18,7 +18,7 @@ export const memories: Memory[] = [
     content:
       'Domain and application code must depend on repository contracts, not Neon or Drizzle directly. The Postgres adapter owns provider-specific search and transactions.',
     kind: 'decision',
-    project: 'Threadbase',
+    project: 'Mindstate',
     tags: ['architecture', 'database'],
     source: 'manual',
     updatedAt: '12 min ago',
@@ -29,7 +29,7 @@ export const memories: Memory[] = [
     content:
       'Give agents a compact, high-signal context bundle at the beginning of a session and a structured handoff target before the session ends.',
     kind: 'context',
-    project: 'Threadbase',
+    project: 'Mindstate',
     tags: ['agents', 'sessions'],
     source: 'mcp',
     updatedAt: '38 min ago',
@@ -51,7 +51,7 @@ export const memories: Memory[] = [
     content:
       'Connect Neon, create the Better Auth tables, then implement repositories before exposing write operations over MCP.',
     kind: 'handoff',
-    project: 'Threadbase',
+    project: 'Mindstate',
     tags: ['next', 'backend'],
     source: 'mcp',
     updatedAt: 'Yesterday',
@@ -59,7 +59,7 @@ export const memories: Memory[] = [
 ]
 
 export const projects = [
-  { name: 'Threadbase', count: 18, active: true },
+  { name: 'Mindstate', count: 18, active: true },
   { name: 'Personal', count: 7, active: false },
   { name: 'Research', count: 4, active: false },
 ]

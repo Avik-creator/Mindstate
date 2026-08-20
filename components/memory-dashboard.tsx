@@ -59,7 +59,7 @@ function Brand() {
         <Braces className="size-4" aria-hidden="true" />
       </div>
       <div className="flex flex-col">
-        <span className="font-sans text-sm font-semibold tracking-tight">Threadbase</span>
+        <span className="font-sans text-sm font-semibold tracking-tight">Mindstate</span>
         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">private memory</span>
       </div>
     </div>

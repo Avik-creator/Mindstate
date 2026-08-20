@@ -31,7 +31,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[0.8fr_1.2fr]">
       <section className="flex flex-col justify-between border-r bg-card p-8 lg:p-12">
-        <Link href="/" className="flex items-center gap-3 text-sm font-semibold"><span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Braces className="size-4" /></span>Threadbase</Link>
+        <Link href="/" className="flex items-center gap-3 text-sm font-semibold"><span className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground"><Braces className="size-4" /></span>Mindstate</Link>
         <div className="hidden max-w-md lg:block"><p className="font-mono text-xs uppercase tracking-widest text-primary">Private by default</p><h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight">A durable thread between you and every agent.</h1><p className="mt-4 text-sm leading-6 text-muted-foreground">Your memory, sessions, and handoffs remain scoped to your account and database.</p></div>
         <p className="text-xs text-muted-foreground">Next.js · Better Auth · Postgres</p>
       </section>
@@ -47,7 +47,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             <Button type="submit" size="lg" disabled={pending}>{pending ? 'Please wait…' : mode === 'sign-up' ? 'Create workspace' : 'Sign in'}<ArrowRight data-icon="inline-end" /></Button>
           </form>
-          <p className="mt-6 text-sm text-muted-foreground">{mode === 'sign-up' ? 'Already have an account?' : 'New to Threadbase?'} <Link className="text-foreground underline underline-offset-4" href={mode === 'sign-up' ? '/sign-in' : '/sign-up'}>{mode === 'sign-up' ? 'Sign in' : 'Create an account'}</Link></p>
+          <p className="mt-6 text-sm text-muted-foreground">{mode === 'sign-up' ? 'Already have an account?' : 'New to Mindstate?'} <Link className="text-foreground underline underline-offset-4" href={mode === 'sign-up' ? '/sign-in' : '/sign-up'}>{mode === 'sign-up' ? 'Sign in' : 'Create an account'}</Link></p>
         </div>
       </section>
     </main>
