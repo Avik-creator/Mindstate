@@ -44,6 +44,13 @@ export const agents = pgTable('agents', {
   capabilities: jsonb('capabilities').$type<string[]>().notNull().default([]), detectionSignals: jsonb('detectionSignals').$type<string[]>().notNull().default([]), confidence: text('confidence').notNull().default('low'),
   lastSeenAt: timestamp('lastSeenAt'), revokedAt: timestamp('revokedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
 }, (t) => [index('agents_user_idx').on(t.userId), index('agents_category_idx').on(t.userId, t.category)])
+export const workspaceClaims = pgTable('workspace_claims', {
+  id: text('id').primaryKey(), email: text('email').notNull(), name: text('name').notNull(), agentName: text('agentName'),
+  agentContext: jsonb('agentContext').$type<Record<string, string>>().notNull().default({}), tokenHash: text('tokenHash').notNull().unique(), requesterHash: text('requesterHash').notNull(),
+  expiresAt: timestamp('expiresAt').notNull(), claimStartedAt: timestamp('claimStartedAt'), claimedAt: timestamp('claimedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+}, (t) => [uniqueIndex('workspace_claims_email_uidx').on(t.email), index('workspace_claims_requester_idx').on(t.requesterHash, t.createdAt), index('workspace_claims_expiry_idx').on(t.expiresAt)])
+
 export const agentSignupTokens = pgTable('agent_signup_tokens', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), agentName: text('agentName').notNull(), tokenHash: text('tokenHash').notNull().unique(), scopes: jsonb('scopes').$type<string[]>().notNull(),
   expiresAt: timestamp('expiresAt').notNull(), usedAt: timestamp('usedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
