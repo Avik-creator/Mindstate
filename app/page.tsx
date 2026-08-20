@@ -1,5 +1,5 @@
-import { MemoryDashboard } from '@/components/memory-dashboard'
+import { LandingPage } from '@/components/landing-page'
 
 export default function Page() {
-  return <MemoryDashboard />
+  return <LandingPage />
 }
