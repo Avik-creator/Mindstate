@@ -5,6 +5,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSignupTokens, apiKeys } from '@/lib/infrastructure/db/postgres/schema'
 import type { AgentScope } from '@/lib/application/contracts'
+import { classifyAgent } from '@/lib/application/workspace-service'
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 
@@ -23,7 +24,8 @@ export async function redeemAgentSignupToken(token: string, requestedName?: stri
     const agentId = randomUUID()
     const apiKey = `tb_live_${randomBytes(32).toString('base64url')}`
     const name = requestedName ?? enrollment.agentName
-    await tx.insert(agents).values({ id: agentId, userId: enrollment.userId, name })
+    const detected = classifyAgent([name])
+    await tx.insert(agents).values({ id: agentId, userId: enrollment.userId, name, detectionSignals: [name], ...detected })
     await tx.insert(apiKeys).values({ id: randomUUID(), userId: enrollment.userId, agentId, name: `${name} key`, prefix: apiKey.slice(0, 16), keyHash: hash(apiKey), scopes: enrollment.scopes })
     await tx.update(agentSignupTokens).set({ usedAt: new Date() }).where(and(eq(agentSignupTokens.id, enrollment.id), isNull(agentSignupTokens.usedAt)))
 

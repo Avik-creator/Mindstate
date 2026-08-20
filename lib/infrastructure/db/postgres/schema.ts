@@ -37,11 +37,13 @@ export const memories = pgTable('memories', {
 export const handoffs = pgTable('handoffs', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), summary: text('summary').notNull(), nextSteps: jsonb('nextSteps').$type<string[]>().notNull().default([]),
   status: text('status').notNull().default('open'), createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
-}, (t) => [index('handoffs_user_idx').on(t.userId)])
+}, (t) => [index('handoffs_user_idx').on(t.userId), index('handoffs_status_idx').on(t.userId, t.status), index('handoffs_project_idx').on(t.userId, t.projectId)])
 export const agents = pgTable('agents', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), status: text('status').notNull().default('active'),
+  category: text('category').notNull().default('general'), runtimeName: text('runtimeName'), runtimeVersion: text('runtimeVersion'),
+  capabilities: jsonb('capabilities').$type<string[]>().notNull().default([]), detectionSignals: jsonb('detectionSignals').$type<string[]>().notNull().default([]), confidence: text('confidence').notNull().default('low'),
   lastSeenAt: timestamp('lastSeenAt'), revokedAt: timestamp('revokedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
-}, (t) => [index('agents_user_idx').on(t.userId)])
+}, (t) => [index('agents_user_idx').on(t.userId), index('agents_category_idx').on(t.userId, t.category)])
 export const agentSignupTokens = pgTable('agent_signup_tokens', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), agentName: text('agentName').notNull(), tokenHash: text('tokenHash').notNull().unique(), scopes: jsonb('scopes').$type<string[]>().notNull(),
   expiresAt: timestamp('expiresAt').notNull(), usedAt: timestamp('usedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),

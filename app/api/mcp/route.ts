@@ -5,6 +5,7 @@ import { actorFromRequest, can } from '@/lib/dal/request-actor'
 import { memoryService, sessionService } from '@/lib/application/container'
 import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-schema'
 import { sessionCreateSchema } from '@/lib/application/session-schema'
+import { agentTelemetrySchema, handoffInputSchema, projectInputSchema, workspaceService } from '@/lib/application/workspace-service'
 import type { Actor } from '@/lib/domain/memory'
 
 export const runtime = 'nodejs'
@@ -70,6 +71,27 @@ const mcp = createMcpHandler((server) => {
     const data = await sessionService.complete(actor('session:write'), sessionId)
     if (!data) throw new Error('Session not found')
     return { content: [{ type: 'text', text: `Completed session ${sessionId}.` }], structuredContent: { session: data } }
+  })
+
+  server.registerTool('list_projects', { title: 'List projects', description: 'List projects with live related-record counts.', inputSchema: z.object({}).strict() }, async () => {
+    const data = await workspaceService.listProjects(actor('memory:read'))
+    return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { projects: data } }
+  })
+  server.registerTool('create_project', { title: 'Create project', description: 'Create an owner-scoped project.', inputSchema: projectInputSchema }, async (input) => {
+    const data = await workspaceService.createProject(actor('memory:write'), input)
+    return { content: [{ type: 'text', text: `Created project ${data.id}` }], structuredContent: { project: data } }
+  })
+  server.registerTool('list_handoffs', { title: 'List handoffs', description: 'List durable agent handoffs.', inputSchema: z.object({}).strict() }, async () => {
+    const data = await workspaceService.listHandoffs(actor('memory:read'))
+    return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { handoffs: data } }
+  })
+  server.registerTool('create_handoff', { title: 'Create handoff', description: 'Create a durable handoff with optional project and session context.', inputSchema: handoffInputSchema }, async (input) => {
+    const data = await workspaceService.createHandoff(actor('memory:write'), input)
+    return { content: [{ type: 'text', text: `Created handoff ${data.id}` }], structuredContent: { handoff: data } }
+  })
+  server.registerTool('report_agent_context', { title: 'Report agent context', description: 'Report runtime and capabilities for explainable automatic agent classification. Never send secrets.', inputSchema: agentTelemetrySchema }, async (input) => {
+    const data = await workspaceService.recordAgentTelemetry(actor('memory:write'), input)
+    return { content: [{ type: 'text', text: `Agent classified as ${data?.category ?? 'general'}.` }], structuredContent: { agent: data } }
   })
 })
 
