@@ -19,6 +19,18 @@ export const metadata: Metadata = {
     url: 'https://mindstate.avikmukherjee.com',
     siteName: 'Mindstate',
     type: 'website',
+    images: [{
+      url: '/mindstate-og.png',
+      width: 1200,
+      height: 630,
+      alt: 'Mindstate — one place for agents to remember, work, and hand off',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Mindstate — Private agent memory',
+    description: 'Capture, search, and share durable context across agent sessions.',
+    images: ['/mindstate-og.png'],
   },
   generator: 'v0.app',
   icons: {
