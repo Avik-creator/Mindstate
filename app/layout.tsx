@@ -32,24 +32,14 @@ export const metadata: Metadata = {
     description: 'Capture, search, and share durable context across agent sessions.',
     images: ['/mindstate-og.png'],
   },
-  generator: 'v0.app',
+  applicationName: 'Mindstate',
+  generator: 'Mindstate',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: [{ url: '/mindstate-icon-source.png', type: 'image/png' }],
+    shortcut: '/mindstate-icon-source.png',
+    apple: '/mindstate-icon-source.png',
   },
+  manifest: '/manifest.webmanifest',
 }
 
 export const viewport: Viewport = {
