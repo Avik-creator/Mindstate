@@ -19,7 +19,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
           <p className="mt-8 font-mono text-xs uppercase tracking-widest text-primary">Claim unavailable</p>
           <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight">This link can no longer be used.</h1>
           <p className="mt-3 text-pretty text-sm leading-6 text-muted-foreground">It may have expired, already been claimed, or been replaced by a newer request. Ask your agent to create a new workspace claim.</p>
-          <Button className="mt-8" variant="outline" asChild><Link href="/">Return home</Link></Button>
+          <Button className="mt-8" variant="outline" nativeButton={false} render={<Link href="/" />}>Return home</Button>
         </section>
       </main>
     )

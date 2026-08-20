@@ -20,8 +20,8 @@ export default function NotFound() {
             <h1 id="not-found-title" className="mt-5 text-balance text-5xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">This thread ends here.</h1>
             <p className="mt-6 max-w-xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">The page you requested is not in this workspace. It may have moved, expired, or never been committed to memory.</p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" asChild><Link href="/"><ArrowLeft data-icon="inline-start" />Return home</Link></Button>
-              <Button size="lg" variant="outline" asChild><Link href="/dashboard"><LayoutDashboard data-icon="inline-start" />Open dashboard</Link></Button>
+              <Button size="lg" nativeButton={false} render={<Link href="/" />}><ArrowLeft data-icon="inline-start" />Return home</Button>
+              <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/dashboard" />}><LayoutDashboard data-icon="inline-start" />Open dashboard</Button>
             </div>
           </div>
 
