@@ -9,6 +9,6 @@ export const memoryInputSchema = z.object({
   sessionId: z.string().nullable().default(null),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
   source: z.enum(['manual', 'api', 'mcp']).default('api'),
-})
+}).strict()
 
-export const memoryPatchSchema = memoryInputSchema.partial()
+export const memoryPatchSchema = memoryInputSchema.partial().refine((value) => Object.keys(value).length > 0, { message: 'At least one field is required' })
