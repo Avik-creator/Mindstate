@@ -33,6 +33,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Textarea } from '@/components/ui/textarea'
 import { memories, projects, sessions, type MemoryKind } from '@/lib/demo-data'
 import { authClient } from '@/lib/auth-client'
+import { AgentAccessPanel } from '@/components/agent-access-panel'
 
 const navigation = [
   { label: 'Overview', icon: Layers3 },
@@ -174,6 +175,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
 
             <aside className="flex flex-col gap-6">
               <section className="rounded-lg border bg-card"><div className="border-b px-4 py-3"><h2 className="text-sm font-semibold">Live sessions</h2></div><div className="flex flex-col">{sessions.map((session) => <div key={session.title} className="flex gap-3 border-b p-4 last:border-b-0"><div className="mt-1"><span className={`block size-2 rounded-full ${session.status === 'active' ? 'bg-primary' : 'bg-muted-foreground/40'}`} /></div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{session.title}</div><div className="mt-1 font-mono text-[10px] text-muted-foreground">{session.agent} · {session.memories} memories</div></div><span className="font-mono text-[10px] text-muted-foreground">{session.time}</span></div>)}</div></section>
+              <AgentAccessPanel />
               <section className="rounded-lg border bg-card p-4"><div className="flex items-center gap-2"><div className="flex size-8 items-center justify-center rounded-md bg-secondary"><Database className="size-4" /></div><div><h2 className="text-sm font-semibold">Persistence active</h2><p className="text-xs text-muted-foreground">Neon + Drizzle + Better Auth</p></div></div><p className="mt-4 text-xs leading-5 text-muted-foreground">Your private workspace is backed by Postgres with owner-scoped reads, writes, API keys, and MCP access.</p><div className="mt-4 flex items-center gap-2 text-xs text-primary"><Check className="size-4" />Migration applied</div></section>
               <section className="rounded-lg border bg-card p-4"><div className="flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">MCP endpoint</span><Badge variant="secondary">Next.js</Badge></div><code className="mt-3 block truncate rounded-md bg-secondary p-3 font-mono text-[11px]">/api/mcp</code><Button variant="ghost" size="sm" className="mt-2 w-full"><Copy data-icon="inline-start" />Copy endpoint</Button></section>
             </aside>

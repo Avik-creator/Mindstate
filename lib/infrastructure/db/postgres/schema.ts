@@ -30,13 +30,21 @@ export const agentSessions = pgTable('agent_sessions', {
 }, (t) => [index('sessions_user_idx').on(t.userId)])
 export const memories = pgTable('memories', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), content: text('content').notNull(),
-  type: text('type').notNull().default('context'), tags: jsonb('tags').$type<string[]>().notNull().default([]), source: text('source').notNull().default('manual'),
+  type: text('type').notNull().default('context'), tags: jsonb('tags').$type<string[]>().notNull().default([]), source: text('source').notNull().default('manual'), actorType: text('actorType').notNull().default('user'), actorId: text('actorId'),
   createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 }, (t) => [index('memories_user_updated_idx').on(t.userId, t.updatedAt), index('memories_project_idx').on(t.userId, t.projectId)])
 export const handoffs = pgTable('handoffs', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), summary: text('summary').notNull(), nextSteps: jsonb('nextSteps').$type<string[]>().notNull().default([]),
   status: text('status').notNull().default('open'), createdAt: timestamp('createdAt').notNull().defaultNow(), updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 }, (t) => [index('handoffs_user_idx').on(t.userId)])
+export const agents = pgTable('agents', {
+  id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), status: text('status').notNull().default('active'),
+  lastSeenAt: timestamp('lastSeenAt'), revokedAt: timestamp('revokedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
+}, (t) => [index('agents_user_idx').on(t.userId)])
+export const agentSignupTokens = pgTable('agent_signup_tokens', {
+  id: text('id').primaryKey(), userId: text('userId').notNull(), agentName: text('agentName').notNull(), tokenHash: text('tokenHash').notNull().unique(), scopes: jsonb('scopes').$type<string[]>().notNull(),
+  expiresAt: timestamp('expiresAt').notNull(), usedAt: timestamp('usedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
+}, (t) => [index('agent_signup_tokens_user_idx').on(t.userId)])
 export const apiKeys = pgTable('api_keys', {
-  id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), prefix: text('prefix').notNull(), keyHash: text('keyHash').notNull().unique(), lastUsedAt: timestamp('lastUsedAt'), revokedAt: timestamp('revokedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
-}, (t) => [index('api_keys_user_idx').on(t.userId)])
+  id: text('id').primaryKey(), userId: text('userId').notNull(), agentId: text('agentId'), name: text('name').notNull(), prefix: text('prefix').notNull(), keyHash: text('keyHash').notNull().unique(), scopes: jsonb('scopes').$type<string[]>().notNull().default(['memory:read']), lastUsedAt: timestamp('lastUsedAt'), revokedAt: timestamp('revokedAt'), createdAt: timestamp('createdAt').notNull().defaultNow(),
+}, (t) => [index('api_keys_user_idx').on(t.userId), index('api_keys_agent_idx').on(t.userId, t.agentId)])

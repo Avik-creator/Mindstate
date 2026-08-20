@@ -15,6 +15,13 @@
       "when": 1787248820579,
       "tag": "0001_mixed_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787249404914,
+      "tag": "0002_true_skaar",
+      "breakpoints": true
     }
   ]
 }

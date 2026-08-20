@@ -15,7 +15,7 @@ function conditions(actor: Actor, search: MemorySearch) {
 
 export class PostgresMemoryRepository implements MemoryRepository, MemorySearchRepository {
   async create(actor: Actor, input: CreateMemoryInput): Promise<MemoryRecord> {
-    const [created] = await db.insert(memories).values({ id: crypto.randomUUID(), userId: actor.userId, ...input }).returning()
+    const [created] = await db.insert(memories).values({ id: crypto.randomUUID(), userId: actor.userId, actorType: actor.agentId ? 'agent' : 'user', actorId: actor.agentId ?? actor.userId, ...input }).returning()
     return created as MemoryRecord
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { actorFromRequest } from '@/lib/dal/request-actor'
+import { actorFromRequest, can } from '@/lib/dal/request-actor'
 import { memoryService } from '@/lib/application/container'
 import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-schema'
 
@@ -11,7 +11,8 @@ const searchSchema = z.object({
 
 export async function GET(request: Request) {
   const actor = await actorFromRequest(request)
-  if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!actor) return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, { status: 401 })
+  if (!can(actor, 'memory:read')) return NextResponse.json({ error: { code: 'FORBIDDEN', message: 'memory:read scope required' } }, { status: 403 })
   const url = new URL(request.url)
   const parsed = searchSchema.safeParse(Object.fromEntries(url.searchParams))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid query', details: parsed.error.flatten() }, { status: 400 })
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const actor = await actorFromRequest(request)
-  if (!actor) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!actor) return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Authentication required' } }, { status: 401 })
+  if (!can(actor, 'memory:write')) return NextResponse.json({ error: { code: 'FORBIDDEN', message: 'memory:write scope required' } }, { status: 403 })
   const parsed = memoryInputSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid memory', details: parsed.error.flatten() }, { status: 400 })
   const data = await memoryService.capture(actor, { ...parsed.data, source: actor.credentialId ? 'api' : parsed.data.source })

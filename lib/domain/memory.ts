@@ -1,6 +1,8 @@
 export type Actor = {
   userId: string
   credentialId?: string
+  agentId?: string
+  scopes?: Array<'memory:read' | 'memory:write'>
 }
 
 export type MemoryType = 'decision' | 'context' | 'preference' | 'handoff'
