@@ -48,9 +48,9 @@ Validation failures use `{ "error": { "code": "VALIDATION_ERROR", "message": "..
 
 Connect to `/api/mcp` with the same bearer key. Available tools:
 
-- `search_memories` — retrieve owner-scoped context.
-- `capture_memory` — write durable context when the key has `memory:write`.
-- `get_memory` — fetch one record by UUID.
+- `search_memories` — search owner-scoped context by query, project, session, or type.
+- `save_memory` — write durable context when the key has `memory:write`.
+- `get_context` — retrieve recent owner-scoped context for a project or session.
 
 Prefer search before capture to avoid duplicate memory. Keep writes concise, factual, and useful across sessions; never save credentials, access tokens, private keys, or raw personal data unless the owner explicitly requires it.
 

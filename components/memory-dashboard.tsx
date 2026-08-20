@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import {
   Archive,
   ArrowUpRight,
@@ -31,9 +32,17 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
-import { memories, projects, sessions, type MemoryKind } from '@/lib/demo-data'
+import { projects, sessions, type MemoryKind } from '@/lib/demo-data'
 import { authClient } from '@/lib/auth-client'
 import { AgentAccessPanel } from '@/components/agent-access-panel'
+
+type DashboardMemory = { id: string; title: string; content: string; type: MemoryKind; projectId: string | null; tags: string[]; source: string; updatedAt: string }
+const fetcher = async (url: string) => {
+  const response = await fetch(url)
+  const body = await response.json()
+  if (!response.ok) throw new Error(body.error?.message ?? 'Could not load memories')
+  return body as { data: DashboardMemory[] }
+}
 
 const navigation = [
   { label: 'Overview', icon: Layers3 },
@@ -97,52 +106,70 @@ function SidebarContent({ user }: { user: { name: string; email: string } }) {
   )
 }
 
-function NewMemoryDialog() {
-  const [saved, setSaved] = useState(false)
+function NewMemoryDialog({ onCreated }: { onCreated: () => Promise<unknown> }) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState('')
+  const [content, setContent] = useState('')
+  const [projectId, setProjectId] = useState('')
+  const [tags, setTags] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function capture() {
+    setSaving(true)
+    setError('')
+    const response = await fetch('/api/v1/memories', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ title, content, type: 'context', projectId: projectId || null, sessionId: null, tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean), source: 'manual' }),
+    })
+    const body = await response.json()
+    setSaving(false)
+    if (!response.ok) return setError(body.error?.message ?? 'Could not capture memory')
+    await onCreated()
+    setTitle(''); setContent(''); setProjectId(''); setTags(''); setOpen(false)
+  }
+
   return (
-    <Dialog onOpenChange={() => setSaved(false)}>
+    <Dialog open={open} onOpenChange={(next) => { setOpen(next); setError('') }}>
       <DialogTrigger render={<Button size="sm" />}><Plus data-icon="inline-start" />New memory</DialogTrigger>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add memory</DialogTitle>
-          <DialogDescription>Capture durable context for you and your agents.</DialogDescription>
-        </DialogHeader>
+        <DialogHeader><DialogTitle>Add memory</DialogTitle><DialogDescription>Capture durable context for you and your agents.</DialogDescription></DialogHeader>
         <div className="flex flex-col gap-4 py-2">
-          <label className="flex flex-col gap-2 text-sm font-medium">Title<Input placeholder="What should be remembered?" /></label>
-          <label className="flex flex-col gap-2 text-sm font-medium">Context<Textarea className="min-h-32" placeholder="Write the decision, preference, constraint, or handoff..." /></label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-2 text-sm font-medium">Project<Input defaultValue="Threadbase" /></label>
-            <label className="flex flex-col gap-2 text-sm font-medium">Tags<Input placeholder="agents, api" /></label>
-          </div>
+          <label className="flex flex-col gap-2 text-sm font-medium">Title<Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What should be remembered?" /></label>
+          <label className="flex flex-col gap-2 text-sm font-medium">Context<Textarea value={content} onChange={(event) => setContent(event.target.value)} className="min-h-32" placeholder="Write the decision, preference, constraint, or handoff..." /></label>
+          <div className="grid grid-cols-2 gap-3"><label className="flex flex-col gap-2 text-sm font-medium">Project ID<Input value={projectId} onChange={(event) => setProjectId(event.target.value)} placeholder="Optional" /></label><label className="flex flex-col gap-2 text-sm font-medium">Tags<Input value={tags} onChange={(event) => setTags(event.target.value)} placeholder="agents, api" /></label></div>
+          {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <DialogFooter><Button onClick={() => setSaved(true)}>{saved ? <Check data-icon="inline-start" /> : <Plus data-icon="inline-start" />}{saved ? 'Captured' : 'Capture memory'}</Button></DialogFooter>
+        <DialogFooter><Button onClick={capture} disabled={saving || title.trim().length < 1 || content.trim().length < 1}>{saving ? 'Capturing…' : 'Capture memory'}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   )
 }
 
-function MemoryRow({ memory }: { memory: (typeof memories)[number] }) {
+function MemoryRow({ memory }: { memory: DashboardMemory }) {
   const kindLabels: Record<MemoryKind, string> = { decision: 'Decision', context: 'Context', preference: 'Preference', handoff: 'Handoff' }
   return (
     <article className="group flex flex-col gap-3 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-muted/40 sm:flex-row sm:items-start">
       <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
-        {memory.kind === 'handoff' ? <ArrowUpRight className="size-4" /> : memory.kind === 'decision' ? <CircleDot className="size-4" /> : <FileText className="size-4" />}
+        {memory.type === 'handoff' ? <ArrowUpRight className="size-4" /> : memory.type === 'decision' ? <CircleDot className="size-4" /> : <FileText className="size-4" />}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-medium">{memory.title}</h3><Badge variant="outline">{kindLabels[memory.kind]}</Badge></div>
+        <div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-medium">{memory.title}</h3><Badge variant="outline">{kindLabels[memory.type]}</Badge></div>
         <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{memory.content}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2 font-mono text-[11px] text-muted-foreground">
-          <span>{memory.project}</span><span>·</span>{memory.tags.map((tag) => <span key={tag}>#{tag}</span>)}<span>·</span><span>{memory.source}</span>
+          {memory.projectId ? <><span>{memory.projectId}</span><span>·</span></> : null}{memory.tags.map((tag) => <span key={tag}>#{tag}</span>)}<span>·</span><span>{memory.source}</span>
         </div>
       </div>
-      <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{memory.updatedAt}</span>
+      <time className="shrink-0 font-mono text-[11px] text-muted-foreground" dateTime={memory.updatedAt}>{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(memory.updatedAt))}</time>
     </article>
   )
 }
 
 export function MemoryDashboard({ user }: { user: { name: string; email: string } }) {
   const [query, setQuery] = useState('')
-  const filtered = useMemo(() => memories.filter((memory) => `${memory.title} ${memory.content} ${memory.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [query])
+  const { data, error, isLoading, mutate } = useSWR('/api/v1/memories?limit=100', fetcher)
+  const liveMemories = useMemo(() => data?.data ?? [], [data])
+  const filtered = useMemo(() => liveMemories.filter((memory) => `${memory.title} ${memory.content} ${memory.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [liveMemories, query])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -152,7 +179,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
           <Sheet><SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}><Menu /><span className="sr-only">Open navigation</span></SheetTrigger><SheetContent side="left" className="w-60 p-0"><SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle><SheetDescription>Workspace navigation</SheetDescription></SheetHeader><SidebarContent user={user} /></SheetContent></Sheet>
           <div className="relative max-w-xl flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} className="h-9 pl-9 font-mono text-xs" placeholder="Search memory..." aria-label="Search memories" /></div>
           <Button variant="outline" size="sm" className="hidden sm:inline-flex"><Command data-icon="inline-start" />Command</Button>
-          <NewMemoryDialog />
+          <NewMemoryDialog onCreated={mutate} />
         </header>
 
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8 md:py-10">
@@ -162,7 +189,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
           </section>
 
           <section aria-label="Workspace summary" className="grid border-y sm:grid-cols-2 lg:grid-cols-4">
-            {[['29', 'Memories', FileText], ['3', 'Active sessions', Bot], ['4', 'Projects', Folder], ['2', 'Open handoffs', ArrowUpRight]].map(([value, label, Icon], index) => (
+            {[[String(liveMemories.length), 'Memories', FileText], ['3', 'Active sessions', Bot], ['4', 'Projects', Folder], [String(liveMemories.filter((memory) => memory.type === 'handoff').length), 'Open handoffs', ArrowUpRight]].map(([value, label, Icon], index) => (
               <div key={String(label)} className={`flex items-center gap-4 px-4 py-5 ${index < 3 ? 'lg:border-r' : ''} ${index % 2 === 0 ? 'sm:border-r lg:border-r' : ''}`}><div className="flex size-9 items-center justify-center rounded-md bg-secondary text-muted-foreground"><Icon className="size-4" /></div><div><div className="font-mono text-xl font-medium">{value as string}</div><div className="text-xs text-muted-foreground">{label as string}</div></div></div>
             ))}
           </section>
@@ -170,7 +197,7 @@ export function MemoryDashboard({ user }: { user: { name: string; email: string 
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
             <section className="min-w-0 overflow-hidden rounded-lg border bg-card">
               <div className="flex items-center justify-between border-b px-5 py-4"><div><h2 className="text-sm font-semibold">Recent memory</h2><p className="mt-1 text-xs text-muted-foreground">High-signal context across your workspace</p></div><Button variant="ghost" size="sm">View all<ArrowUpRight data-icon="inline-end" /></Button></div>
-              <div>{filtered.length ? filtered.map((memory) => <MemoryRow key={memory.id} memory={memory} />) : <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-8 text-center"><Archive className="size-5 text-muted-foreground" /><p className="text-sm font-medium">No matching memory</p><p className="text-xs text-muted-foreground">Try another word or capture a new memory.</p></div>}</div>
+              <div>{isLoading ? <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">Loading memory…</div> : error ? <div role="alert" className="flex min-h-48 items-center justify-center p-8 text-sm text-destructive">Could not load memory.</div> : filtered.length ? filtered.map((memory) => <MemoryRow key={memory.id} memory={memory} />) : <div className="flex min-h-48 flex-col items-center justify-center gap-2 p-8 text-center"><Archive className="size-5 text-muted-foreground" /><p className="text-sm font-medium">No matching memory</p><p className="text-xs text-muted-foreground">Try another word or capture a new memory.</p></div>}</div>
             </section>
 
             <aside className="flex flex-col gap-6">
