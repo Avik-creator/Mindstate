@@ -4,6 +4,11 @@ import type { PageRequest } from '@/lib/domain/pagination'
 // A session with no heartbeat inside this window reads as stale rather than live.
 export const SESSION_STALE_AFTER_MS = 90_000
 
+// Taking work away from an agent needs more confidence than dimming a dot in the dashboard, so
+// a claim survives longer silence than presence does. Three times the documented 60s upper
+// bound, which tolerates two missed heartbeats; presence stays responsive at 90s.
+export const CLAIM_LEASE_AFTER_MS = 180_000
+
 export type SessionStatus = 'active' | 'completed'
 export type SessionPresence = 'live' | 'stale' | 'completed'
 

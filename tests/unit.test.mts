@@ -5,6 +5,7 @@ import { can, LEGACY_SCOPE_EXPANSION, SCOPES } from '../lib/domain/scopes.ts'
 import { toTsQuery } from '../lib/domain/text-search.ts'
 import { verifyAgentIdentity } from '../lib/domain/agent-identity.ts'
 import { claimState, isAvailable } from '../lib/domain/handoff-claim.ts'
+import { CLAIM_LEASE_AFTER_MS, SESSION_STALE_AFTER_MS } from '../lib/domain/agent-session.ts'
 import { normalizePage, MAX_LIMIT } from '../lib/domain/pagination.ts'
 
 function request(headers: Record<string, string>) {
@@ -133,5 +134,27 @@ describe('handoff claims', () => {
     assert.equal(isAvailable({ status: 'open', claim: 'unclaimed' }), true)
     assert.equal(isAvailable({ status: 'open', claim: 'held' }), false)
     assert.equal(isAvailable({ status: 'closed', claim: 'expired' }), false, 'closed work is not up for grabs')
+  })
+})
+
+describe('heartbeat thresholds', () => {
+  // Documented guidance is a heartbeat every 30 to 60 seconds.
+  const SLOWEST_DOCUMENTED_BEAT_MS = 60_000
+
+  it('lets a claim survive missed heartbeats at the slowest documented cadence', () => {
+    // At two missed beats an agent is still working; taking its work would cause exactly the
+    // duplicate effort claiming exists to prevent.
+    assert.ok(
+      CLAIM_LEASE_AFTER_MS >= SLOWEST_DOCUMENTED_BEAT_MS * 3,
+      `a claim lease of ${CLAIM_LEASE_AFTER_MS}ms is too tight for ${SLOWEST_DOCUMENTED_BEAT_MS}ms heartbeats`,
+    )
+  })
+
+  it('keeps presence more sensitive than the claim lease', () => {
+    // Showing stale early is a harmless hint. Releasing someone's work is a decision.
+    assert.ok(
+      SESSION_STALE_AFTER_MS < CLAIM_LEASE_AFTER_MS,
+      'presence must dim before work is taken away, never after',
+    )
   })
 })

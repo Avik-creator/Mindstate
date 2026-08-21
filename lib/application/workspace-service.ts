@@ -8,7 +8,7 @@ import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infra
 import { recordAudit } from '@/lib/application/audit-service'
 import { verifyAgentIdentity } from '@/lib/domain/agent-identity'
 import { claimState } from '@/lib/domain/handoff-claim'
-import { SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
+import { CLAIM_LEASE_AFTER_MS, SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
 import type { Actor } from '@/lib/domain/memory'
 import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
 
@@ -51,7 +51,7 @@ const holderIsLive = sql<boolean>`exists (
   select 1 from agent_sessions s
   where s."id" = "handoffs"."claimedBySessionId"
     and s."status" = 'active'
-    and s."lastHeartbeatAt" >= now() - make_interval(secs => ${SESSION_STALE_AFTER_MS / 1000})
+    and s."lastHeartbeatAt" >= now() - make_interval(secs => ${CLAIM_LEASE_AFTER_MS / 1000})
 )`
 
 export const workspaceService = {
