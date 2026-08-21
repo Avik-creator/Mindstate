@@ -47,13 +47,13 @@ export function WorkspaceClaimForm({ token, name, email, agentName }: { token: s
 
   return (
     <main className="flex min-h-screen items-center justify-center px-5 py-12">
-      <section className="w-full max-w-lg rounded-2xl border bg-card p-6 shadow-xl sm:p-10" aria-labelledby="claim-title">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"><LockKeyhole aria-hidden="true" /></div>
-        <p className="mt-8 font-mono text-xs uppercase tracking-widest text-primary">Human approval required</p>
+      <section className="w-full max-w-lg border-2 border-foreground bg-card p-6 shadow-xl sm:p-10" aria-labelledby="claim-title">
+        <div className="flex size-11 items-center justify-center  bg-primary text-primary-foreground"><LockKeyhole aria-hidden="true" /></div>
+        <p className="mt-8 font-mono text-xs uppercase tracking-widest text-brand">Human approval required</p>
         <h1 id="claim-title" className="mt-3 text-balance text-3xl font-semibold tracking-tight">Claim your Mindstate workspace.</h1>
         <p className="mt-3 text-pretty text-sm leading-6 text-muted-foreground">{agentName ? `${agentName} prepared this workspace for you.` : 'An agent prepared this workspace for you.'} Only you can choose the password and create the owner account.</p>
 
-        <dl className="mt-8 flex flex-col gap-3 rounded-xl border bg-background p-4 text-sm">
+        <dl className="mt-8 flex flex-col gap-3  border bg-background p-4 text-sm">
           <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Owner</dt><dd className="truncate font-medium">{name}</dd></div>
           <div className="flex items-center justify-between gap-4"><dt className="text-muted-foreground">Email</dt><dd className="truncate font-mono text-xs">{email}</dd></div>
         </dl>

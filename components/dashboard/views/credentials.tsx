@@ -8,7 +8,7 @@ export function CredentialList({ items, refresh }: { items: ApiKey[]; refresh: (
   if (!items.length) return <Empty label="API keys" hint="Enrol an agent to issue its first key." />
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden border-2 border-foreground bg-card">
       {items.map((key) => (
         <article key={key.id} className="flex flex-col gap-3 border-b p-5 last:border-b-0 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">

@@ -9,10 +9,10 @@ export function AgentList({ items, query, refresh }: { items: Agent[]; query?: s
   if (!items.length) return query ? <NoMatches label="agents" query={query} /> : <Empty label="agents" />
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden border-2 border-foreground bg-card">
       {items.map((agent) => (
         <article key={agent.id} className="flex flex-col gap-3 border-b p-5 last:border-b-0 sm:flex-row sm:items-center">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-secondary">
+          <div className="flex size-9 shrink-0 items-center justify-center bg-secondary">
             <Bot className="size-4" aria-hidden="true" />
           </div>
           <div className="min-w-0 flex-1">

@@ -1,12 +1,12 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist, Source_Code_Pro } from 'next/font/google'
+import { JetBrains_Mono } from 'next/font/google'
+import { GeistPixelGrid } from 'geist/font/pixel'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './globals.css'
 import { cn } from "@/lib/utils";
 
-const sourceCodePro = Source_Code_Pro({ subsets: ['latin'], variable: '--font-source-code-pro' })
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
+const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' })
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://mindstate.avikmukherjee.com'),
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   colorScheme: 'light',
-  themeColor: '#ffffff',
+  themeColor: '#EFEBDF',
   userScalable: true,
 }
 
@@ -54,8 +54,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={cn('bg-background', sourceCodePro.variable, geist.variable)}>
-      <body className="font-sans antialiased">
+    <html lang="en" className={cn('bg-background', jetbrainsMono.variable, GeistPixelGrid.variable)}>
+      <body className="font-mono antialiased">
         <TooltipProvider>{children}</TooltipProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

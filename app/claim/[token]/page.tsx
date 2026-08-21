@@ -14,9 +14,9 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     const expired = claim && claim.expiresAt <= new Date()
     return (
       <main className="flex min-h-screen items-center justify-center px-5 py-12">
-        <section className="w-full max-w-lg rounded-2xl border bg-card p-8 text-center shadow-xl sm:p-12">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">{expired ? <Clock3 aria-hidden="true" /> : <ShieldX aria-hidden="true" />}</div>
-          <p className="mt-8 font-mono text-xs uppercase tracking-widest text-primary">Claim unavailable</p>
+        <section className="w-full max-w-lg border-2 border-foreground bg-card p-8 text-center shadow-xl sm:p-12">
+          <div className="mx-auto flex size-12 items-center justify-center  bg-muted text-muted-foreground">{expired ? <Clock3 aria-hidden="true" /> : <ShieldX aria-hidden="true" />}</div>
+          <p className="mt-8 font-mono text-xs uppercase tracking-widest text-brand">Claim unavailable</p>
           <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight">This link can no longer be used.</h1>
           <p className="mt-3 text-pretty text-sm leading-6 text-muted-foreground">It may have expired, already been claimed, or been replaced by a newer request. Ask your agent to create a new workspace claim.</p>
           <Button className="mt-8" variant="outline" nativeButton={false} render={<Link href="/" />}>Return home</Button>

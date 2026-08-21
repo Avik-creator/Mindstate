@@ -18,7 +18,7 @@ const nav: Array<{ label: View; icon: typeof Layers3 }> = [
 function Brand() {
   return (
     <div className="flex items-center gap-3 px-3">
-      <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+      <div className="flex size-8 items-center justify-center bg-primary text-primary-foreground">
         <Braces className="size-4" aria-hidden="true" />
       </div>
       <div>
@@ -66,7 +66,7 @@ export function Sidebar({ user, view, setView, summary, projects }: SidebarProps
             className="w-full justify-start"
           >
             <Icon data-icon="inline-start" />
-            <span>{label}</span>
+            <span className="text-xs uppercase tracking-[0.12em]">{label}</span>
             {counts[label] !== undefined ? (
               <span className="ml-auto font-mono text-xs text-muted-foreground">{counts[label]}</span>
             ) : null}
@@ -93,8 +93,8 @@ export function Sidebar({ user, view, setView, summary, projects }: SidebarProps
       </div>
 
       <div className="mt-auto p-3">
-        <div className="flex items-center gap-3 rounded-md border border-sidebar-border p-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-secondary font-mono text-xs">
+        <div className="flex items-center gap-3 border-2 border-foreground p-2">
+          <div className="flex size-8 items-center justify-center bg-secondary font-mono text-xs">
             {user.name.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
