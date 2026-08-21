@@ -86,3 +86,17 @@ export const auditEvents = pgTable('audit_events', {
   summary: text('summary').notNull().default(''), metadata: jsonb('metadata').$type<Record<string, string>>().notNull().default({}),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('audit_user_created_idx').on(t.userId, t.createdAt), index('audit_target_idx').on(t.userId, t.targetType, t.targetId)])
+
+// Directed edges between memories. Superseded rows are retained permanently: they are the record
+// of how a decision changed, and deleting them would lose exactly what makes this useful.
+export const memoryRelations = pgTable('memory_relations', {
+  id: text('id').primaryKey(), userId: text('userId').notNull(),
+  fromId: text('fromId').notNull(), toId: text('toId').notNull(),
+  kind: text('kind').notNull(), note: text('note').notNull().default(''),
+  actorType: text('actorType').notNull().default('user'), actorId: text('actorId'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('memory_relations_edge_uidx').on(t.userId, t.fromId, t.toId, t.kind),
+  index('memory_relations_from_idx').on(t.userId, t.fromId),
+  index('memory_relations_to_idx').on(t.userId, t.toId),
+])
