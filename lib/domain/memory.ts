@@ -1,8 +1,10 @@
+import type { Scope } from '@/lib/domain/scopes'
+
 export type Actor = {
   userId: string
   credentialId?: string
   agentId?: string
-  scopes?: Array<'memory:read' | 'memory:write' | 'session:read' | 'session:write'>
+  scopes?: Scope[]
 }
 
 export type MemoryType = 'decision' | 'context' | 'preference' | 'handoff'

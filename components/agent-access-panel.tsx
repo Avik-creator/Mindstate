@@ -5,6 +5,7 @@ import { Bot, Check, Copy, KeyRound, Loader2 } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SCOPES } from '@/lib/domain/scopes'
 
 type TokenResult = { token: string; expiresAt: string }
 
@@ -21,7 +22,7 @@ export function AgentAccessPanel() {
     const response = await fetch('/api/v1/agent-signup-tokens', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agentName: name, scopes: ['memory:read', 'memory:write', 'session:read', 'session:write'], expiresInMinutes: 15 }),
+      body: JSON.stringify({ agentName: name, scopes: SCOPES, expiresInMinutes: 15 }),
     })
     const body = await response.json()
     setLoading(false)
