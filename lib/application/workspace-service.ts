@@ -57,9 +57,9 @@ export const workspaceService = {
   },
   async listProjects(actor: Actor) {
     return db.select({ id: projects.id, name: projects.name, description: projects.description, createdAt: projects.createdAt, updatedAt: projects.updatedAt,
-      memoryCount: sql<number>`(select count(*)::int from memories m where m."userId" = ${actor.userId} and m."projectId" = ${projects.id})`,
-      sessionCount: sql<number>`(select count(*)::int from agent_sessions s where s."userId" = ${actor.userId} and s."projectId" = ${projects.id})`,
-      handoffCount: sql<number>`(select count(*)::int from handoffs h where h."userId" = ${actor.userId} and h."projectId" = ${projects.id})`,
+      memoryCount: sql<number>`(select count(*)::int from memories m where m."userId" = ${actor.userId} and m."projectId" = "projects"."id")`,
+      sessionCount: sql<number>`(select count(*)::int from agent_sessions s where s."userId" = ${actor.userId} and s."projectId" = "projects"."id")`,
+      handoffCount: sql<number>`(select count(*)::int from handoffs h where h."userId" = ${actor.userId} and h."projectId" = "projects"."id")`,
     }).from(projects).where(eq(projects.userId, actor.userId)).orderBy(desc(projects.updatedAt))
   },
   async createProject(actor: Actor, input: z.infer<typeof projectInputSchema>) { const [row] = await db.insert(projects).values({ id: randomUUID(), userId: actor.userId, ...input }).returning(); return row },
