@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { send } from '@/components/dashboard/api'
-import type { Project } from '@/components/dashboard/types'
+import { MEMORY_TYPES, type Memory, type Project } from '@/components/dashboard/types'
 
 export type CreateKind = 'memory' | 'project' | 'handoff'
 
@@ -29,6 +29,7 @@ export function CreateDialog({ kind, projects, done }: CreateDialogProps) {
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [projectId, setProjectId] = useState('')
+  const [type, setType] = useState<Memory['type']>('context')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -41,13 +42,14 @@ export function CreateDialog({ kind, projects, done }: CreateDialogProps) {
       } else if (kind === 'handoff') {
         await send('/api/v1/handoffs', 'POST', { title, summary: content, projectId: projectId || null, sessionId: null, nextSteps: [] })
       } else {
-        await send('/api/v1/memories', 'POST', { title, content, type: 'context', projectId: projectId || null, sessionId: null, tags: [], source: 'manual' })
+        await send('/api/v1/memories', 'POST', { title, content, type, projectId: projectId || null, sessionId: null, tags: [], source: 'manual' })
       }
       await done()
       setOpen(false)
       setTitle('')
       setContent('')
       setProjectId('')
+      setType('context')
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Request failed')
     } finally {
@@ -75,6 +77,21 @@ export function CreateDialog({ kind, projects, done }: CreateDialogProps) {
             <FieldLabel>{kind === 'handoff' ? 'Summary' : 'Description'}</FieldLabel>
             <Textarea value={content} onChange={(event) => setContent(event.target.value)} />
           </Field>
+          {kind === 'memory' ? (
+            <Field>
+              <FieldLabel>Type</FieldLabel>
+              <Select value={type} onValueChange={(value) => setType(value as Memory['type'])}>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {MEMORY_TYPES.map((option) => (
+                      <SelectItem key={option} value={option} className="capitalize">{option}</SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+          ) : null}
           {kind !== 'project' ? (
             <Field>
               <FieldLabel>Project</FieldLabel>

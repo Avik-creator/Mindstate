@@ -74,6 +74,8 @@ export type Summary = {
   sessions: { live: number; stale: number; completed: number }
 }
 
+export const MEMORY_TYPES: Memory['type'][] = ['decision', 'context', 'preference', 'handoff']
+
 export const VIEWS: View[] = ['Overview', 'Memories', 'Projects', 'Sessions', 'Handoffs', 'Agents']
 
 export function isView(value: string | undefined): value is View {
