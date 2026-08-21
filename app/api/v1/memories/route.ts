@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiGuard } from '@/lib/dal/api-guard'
 import { memoryService } from '@/lib/application/container'
-import { validationError } from '@/lib/application/contracts'
+import { invalidRelation, ReferenceNotFoundError, validationError } from '@/lib/application/contracts'
 import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-schema'
 
 const searchSchema = z.object({
@@ -27,6 +27,11 @@ export async function POST(request: Request) {
   if (!actor) return response
   const parsed = memoryInputSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
-  const data = await memoryService.capture(actor, { ...parsed.data, source: actor.credentialId ? 'api' : parsed.data.source })
-  return NextResponse.json({ data }, { status: 201 })
+  try {
+    const data = await memoryService.capture(actor, { ...parsed.data, source: actor.credentialId ? 'api' : parsed.data.source })
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (error) {
+    if (error instanceof ReferenceNotFoundError) return NextResponse.json(invalidRelation(error), { status: 400 })
+    throw error
+  }
 }

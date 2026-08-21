@@ -28,6 +28,13 @@ export const agentBootstrapSchema = z.object({
   agentName: agentNameSchema.optional(),
 }).strict()
 
+// Thrown when a request references a project or session the caller does not own.
+export class ReferenceNotFoundError extends Error {}
+
+export function invalidRelation(error: ReferenceNotFoundError) {
+  return { error: { code: 'INVALID_RELATION', message: error.message } }
+}
+
 export function validationError(error: z.ZodError) {
   return {
     error: {
