@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push supersedes the run already in flight for the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  check:
+    name: types and migrations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Reads the pnpm version from packageManager. pnpm 11 ignores pnpm.overrides, which unpins hono.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Two passes: the app, then tests/*.mts, which the app's include globs do not reach.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # A schema edit without a matching migration deploys code that its database cannot serve.
+      - name: Schema matches the migrations on disk
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+        run: |
+          pnpm exec drizzle-kit generate
+          # porcelain, not diff: a generated migration is a new untracked file that git diff cannot see.
+          if [ -n "$(git status --porcelain drizzle/)" ]; then
+            echo "::error::schema.ts has changes with no migration. Run pnpm db:generate and commit drizzle/."
+            git status --porcelain drizzle/
+            exit 1
+          fi
+
+  test:
+    name: tests against a real database
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mindstate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/mindstate
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-32
+      BETTER_AUTH_URL: http://127.0.0.1:3000
+      MINDSTATE_TEST_URL: http://127.0.0.1:3000
+      MINDSTATE_TEST_EMAIL: ci@mindstate.test
+      MINDSTATE_TEST_PASSWORD: ci-password-not-a-secret
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Proves the migrations still build the schema from nothing, not just from last week's database.
+      - name: Migrate an empty database
+        run: pnpm db:migrate
+
+      - run: pnpm build
+
+      - name: Start the server
+        run: |
+          nohup pnpm start > server.log 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS -o /dev/null http://127.0.0.1:3000/api/v1; then
+              echo "server is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::server did not answer /api/v1 within 60s"
+          exit 1
+
+      # Without an account the integration tests fail in before() with an unhelpful sign-in error.
+      - name: Create the test account
+        run: |
+          curl -fsS -X POST http://127.0.0.1:3000/api/auth/sign-up/email \
+            -H 'content-type: application/json' \
+            -H 'origin: http://127.0.0.1:3000' \
+            -d "{\"name\":\"CI\",\"email\":\"$MINDSTATE_TEST_EMAIL\",\"password\":\"$MINDSTATE_TEST_PASSWORD\"}" \
+            -o /dev/null
+
+      - name: Test
+        run: |
+          set -o pipefail
+          pnpm test 2>&1 | tee test-output.txt
+          # A misconfigured integration suite skips without failing and without counting as skipped.
+          if ! grep -q '^✔ workspace endpoints' test-output.txt; then
+            echo "::error::the integration suite did not run, so CI proved nothing about the database"
+            exit 1
+          fi
+
+      - name: Server log
+        if: failure()
+        run: cat server.log || true
