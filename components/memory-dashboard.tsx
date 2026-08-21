@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import useSWR, { type SWRResponse } from 'swr'
+import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
 import { Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,15 +12,18 @@ import { Sidebar } from '@/components/dashboard/sidebar'
 import { fetcher } from '@/components/dashboard/api'
 import { CardsSkeleton, LoadError, RowsSkeleton } from '@/components/dashboard/states'
 import { AgentList } from '@/components/dashboard/views/agents'
+import { CredentialList } from '@/components/dashboard/views/credentials'
 import { HandoffList } from '@/components/dashboard/views/handoffs'
 import { MemoryList } from '@/components/dashboard/views/memories'
 import { Overview } from '@/components/dashboard/views/overview'
 import { ProjectList } from '@/components/dashboard/views/projects'
 import { SessionList } from '@/components/dashboard/views/sessions'
-import type { Agent, Handoff, Memory, Project, Session, Summary, View } from '@/components/dashboard/types'
+import type { Agent, ApiKey, Handoff, MemoryPage, Project, Session, Summary, View } from '@/components/dashboard/types'
 
 // Views the search box filters on the server; the rest filter what is already loaded.
 const SERVER_SEARCH: View[] = ['Overview', 'Memories']
+
+const PAGE_SIZE = 50
 
 const SEARCH_PLACEHOLDER: Record<View, string> = {
   Overview: 'Search memories',
@@ -75,8 +79,12 @@ export function MemoryDashboard({
   }
 
   const summary = useSWR<{ data: Summary }>('/api/v1/workspace/summary', fetcher, { refreshInterval: 15000 })
-  const memories = useSWR<{ data: Memory[] }>(
-    `/api/v1/memories?limit=100${serverQuery ? `&q=${encodeURIComponent(serverQuery)}` : ''}`,
+  const memories = useSWRInfinite<MemoryPage>(
+    (index, previous) => {
+      if (previous && previous.data.length < PAGE_SIZE) return null
+      const search = serverQuery ? `&q=${encodeURIComponent(serverQuery)}` : ''
+      return `/api/v1/memories?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}${search}`
+    },
     fetcher,
     { refreshInterval: 30000, keepPreviousData: true },
   )
@@ -84,12 +92,16 @@ export function MemoryDashboard({
   const sessions = useSWR<{ data: Session[] }>('/api/v1/sessions?limit=100', fetcher, { refreshInterval: 15000 })
   const handoffs = useSWR<{ data: Handoff[] }>('/api/v1/handoffs', fetcher, { refreshInterval: 30000 })
   const agents = useSWR<{ data: Agent[] }>('/api/v1/agents', fetcher, { refreshInterval: 30000 })
+  const apiKeys = useSWR<{ data: ApiKey[] }>('/api/v1/api-keys', fetcher, { refreshInterval: 60000 })
 
   const allProjects = projects.data?.data ?? []
-  const allMemories = memories.data?.data ?? []
+  const allMemories = memories.data?.flatMap((page) => page.data) ?? []
+  const totalMemories = memories.data?.[0]?.page.total ?? 0
+  const moreMemories = allMemories.length < totalMemories
   const allSessions = sessions.data?.data ?? []
   const allHandoffs = handoffs.data?.data ?? []
   const allAgents = agents.data?.data ?? []
+  const allApiKeys = apiKeys.data?.data ?? []
 
   const localQuery = SERVER_SEARCH.includes(view) ? '' : debouncedQuery.trim()
   const shownProjects = useMemo(
@@ -110,7 +122,7 @@ export function MemoryDashboard({
   )
 
   async function refresh() {
-    await Promise.all([summary.mutate(), memories.mutate(), projects.mutate(), sessions.mutate(), handoffs.mutate(), agents.mutate()])
+    await Promise.all([summary.mutate(), memories.mutate(), projects.mutate(), sessions.mutate(), handoffs.mutate(), agents.mutate(), apiKeys.mutate()])
   }
 
   const liveSummary = summary.data ? { ...summary.data.data, projects: allProjects.length } : undefined
@@ -160,39 +172,58 @@ export function MemoryDashboard({
           </div>
 
           {view === 'Overview' ? (
-            <Section swr={summary} skeleton={<RowsSkeleton rows={3} />}>
-              {liveSummary ? <Overview summary={liveSummary} memories={allMemories} /> : null}
+            <Section error={summary.error} loading={summary.isLoading && !summary.data} retry={() => { void summary.mutate() }} skeleton={<RowsSkeleton rows={3} />}>
+              {liveSummary ? <Overview summary={liveSummary} memories={allMemories} refresh={refresh} /> : null}
             </Section>
           ) : null}
 
           {view === 'Memories' ? (
-            <Section swr={memories} skeleton={<RowsSkeleton />}>
-              <MemoryList items={allMemories} query={activeQuery} />
+            <Section error={memories.error} loading={memories.isLoading && !memories.data} retry={() => { void memories.mutate() }} skeleton={<RowsSkeleton />}>
+              <MemoryList items={allMemories} query={activeQuery} refresh={refresh} />
+              {moreMemories ? (
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <Button variant="outline" size="sm" disabled={memories.isValidating} onClick={() => { void memories.setSize(memories.size + 1) }}>
+                    {memories.isValidating ? 'Loading…' : 'Load more'}
+                  </Button>
+                  <span className="font-mono text-[11px] text-muted-foreground">{allMemories.length} of {totalMemories}</span>
+                </div>
+              ) : null}
             </Section>
           ) : null}
 
           {view === 'Projects' ? (
-            <Section swr={projects} skeleton={<CardsSkeleton />}>
+            <Section error={projects.error} loading={projects.isLoading && !projects.data} retry={() => { void projects.mutate() }} skeleton={<CardsSkeleton />}>
               <ProjectList items={shownProjects} query={activeQuery} refresh={refresh} />
             </Section>
           ) : null}
 
           {view === 'Sessions' ? (
-            <Section swr={sessions} skeleton={<RowsSkeleton />}>
+            <Section error={sessions.error} loading={sessions.isLoading && !sessions.data} retry={() => { void sessions.mutate() }} skeleton={<RowsSkeleton />}>
               <SessionList items={shownSessions} query={activeQuery} />
             </Section>
           ) : null}
 
           {view === 'Handoffs' ? (
-            <Section swr={handoffs} skeleton={<CardsSkeleton />}>
+            <Section error={handoffs.error} loading={handoffs.isLoading && !handoffs.data} retry={() => { void handoffs.mutate() }} skeleton={<CardsSkeleton />}>
               <HandoffList items={shownHandoffs} query={activeQuery} refresh={refresh} />
             </Section>
           ) : null}
 
           {view === 'Agents' ? (
-            <Section swr={agents} skeleton={<RowsSkeleton />}>
-              <AgentList items={shownAgents} query={activeQuery} />
-            </Section>
+            <>
+              <Section error={agents.error} loading={agents.isLoading && !agents.data} retry={() => { void agents.mutate() }} skeleton={<RowsSkeleton />}>
+                <AgentList items={shownAgents} query={activeQuery} />
+              </Section>
+              <section className="flex flex-col gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold tracking-tight">API keys</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">Revoke a key to cut off a compromised agent immediately.</p>
+                </div>
+                <Section error={apiKeys.error} loading={apiKeys.isLoading && !apiKeys.data} retry={() => { void apiKeys.mutate() }} skeleton={<RowsSkeleton rows={2} />}>
+                  <CredentialList items={allApiKeys} refresh={refresh} />
+                </Section>
+              </section>
+            </>
           ) : null}
         </div>
       </main>
@@ -201,18 +232,20 @@ export function MemoryDashboard({
 }
 
 // Each section owns its own loading and failure state so one dead request cannot blank the page.
-function Section<T>({
-  swr,
+function Section({
+  error,
+  loading,
+  retry,
   skeleton,
   children,
 }: {
-  swr: SWRResponse<T, Error>
+  error?: Error
+  loading: boolean
+  retry: () => void
   skeleton: React.ReactNode
   children: React.ReactNode
 }) {
-  if (swr.error) {
-    return <LoadError message={swr.error.message} retry={() => { void swr.mutate() }} />
-  }
-  if (swr.isLoading && !swr.data) return <>{skeleton}</>
+  if (error) return <LoadError message={error.message} retry={retry} />
+  if (loading) return <>{skeleton}</>
   return <>{children}</>
 }

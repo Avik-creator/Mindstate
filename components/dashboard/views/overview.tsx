@@ -2,7 +2,7 @@ import { AgentAccessPanel } from '@/components/agent-access-panel'
 import { MemoryList } from '@/components/dashboard/views/memories'
 import type { Memory, Summary } from '@/components/dashboard/types'
 
-export function Overview({ summary, memories }: { summary: Summary; memories: Memory[] }) {
+export function Overview({ summary, memories, refresh }: { summary: Summary; memories: Memory[]; refresh: () => Promise<void> }) {
   const tiles: Array<[number, string]> = [
     [summary.memories, 'Memories'],
     [summary.sessions.live, 'Live sessions'],
@@ -25,7 +25,7 @@ export function Overview({ summary, memories }: { summary: Summary; memories: Me
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <h2 className="mb-3 text-sm font-semibold">Recent memories</h2>
-          <MemoryList items={memories.slice(0, 5)} />
+          <MemoryList items={memories.slice(0, 5)} refresh={refresh} />
         </div>
         <div className="flex flex-col gap-6">
           <AgentAccessPanel />

@@ -21,7 +21,9 @@ export function AgentList({ items, query }: { items: Agent[]; query?: string }) 
             </p>
           </div>
           <Badge variant="outline">{agent.category}</Badge>
-          <span className="font-mono text-[10px] uppercase text-muted-foreground">{agent.confidence} confidence</span>
+          <span className="font-mono text-[10px] uppercase text-muted-foreground" title="Derived from what the agent reported about itself">
+            {agent.confidence} confidence · self-reported
+          </span>
         </article>
       ))}
     </div>
