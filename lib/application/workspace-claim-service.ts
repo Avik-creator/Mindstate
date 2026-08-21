@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import { and, count, eq, gt, isNull } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, lt, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { workspaceClaims } from '@/lib/infrastructure/db/postgres/schema'
@@ -7,6 +7,8 @@ import { workspaceClaims } from '@/lib/infrastructure/db/postgres/schema'
 const CLAIM_TTL_MS = 30 * 60 * 1000
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000
 const RATE_LIMIT_MAX = 8
+// A reservation held by a request that died mid-flight would otherwise brick the link permanently.
+const RESERVATION_LEASE_MS = 5 * 60 * 1000
 
 export const workspaceClaimInputSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -54,13 +56,17 @@ export async function getWorkspaceClaim(token: string) {
   if (token.length < 32 || token.length > 256) return null
   const [claim] = await db.select({ name: workspaceClaims.name, email: workspaceClaims.email, agentName: workspaceClaims.agentName, expiresAt: workspaceClaims.expiresAt, claimedAt: workspaceClaims.claimedAt, claimStartedAt: workspaceClaims.claimStartedAt }).from(workspaceClaims).where(eq(workspaceClaims.tokenHash, digest(token))).limit(1)
   if (!claim) return null
-  return { ...claim, valid: !claim.claimedAt && !claim.claimStartedAt && claim.expiresAt > new Date() }
+  const now = new Date()
+  const reserved = claim.claimStartedAt !== null && claim.claimStartedAt.getTime() > now.getTime() - RESERVATION_LEASE_MS
+  return { ...claim, valid: !claim.claimedAt && !reserved && claim.expiresAt > now }
 }
 
 export async function reserveWorkspaceClaim(token: string) {
   const now = new Date()
+  const leaseFloor = new Date(now.getTime() - RESERVATION_LEASE_MS)
   const [claim] = await db.update(workspaceClaims).set({ claimStartedAt: now, updatedAt: now }).where(and(
-    eq(workspaceClaims.tokenHash, digest(token)), isNull(workspaceClaims.claimedAt), isNull(workspaceClaims.claimStartedAt), gt(workspaceClaims.expiresAt, now),
+    eq(workspaceClaims.tokenHash, digest(token)), isNull(workspaceClaims.claimedAt), gt(workspaceClaims.expiresAt, now),
+    or(isNull(workspaceClaims.claimStartedAt), lt(workspaceClaims.claimStartedAt, leaseFloor)),
   )).returning({ id: workspaceClaims.id, name: workspaceClaims.name, email: workspaceClaims.email })
   return claim ?? null
 }

@@ -2,20 +2,20 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { apiKeyCreateSchema, validationError } from '@/lib/application/contracts'
-import { actorFromRequest } from '@/lib/dal/request-actor'
+import { apiGuard } from '@/lib/dal/api-guard'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { apiKeys } from '@/lib/infrastructure/db/postgres/schema'
 
 export async function GET(request: Request) {
-  const actor = await actorFromRequest(request)
-  if (!actor || actor.credentialId) return NextResponse.json({ error: 'Session authentication required' }, { status: 401 })
+  const { actor, response } = await apiGuard(request, undefined, { sessionOnly: true })
+  if (!actor) return response
   const data = await db.select({ id: apiKeys.id, name: apiKeys.name, prefix: apiKeys.prefix, lastUsedAt: apiKeys.lastUsedAt, revokedAt: apiKeys.revokedAt, createdAt: apiKeys.createdAt }).from(apiKeys).where(eq(apiKeys.userId, actor.userId)).orderBy(desc(apiKeys.createdAt))
   return NextResponse.json({ data })
 }
 
 export async function POST(request: Request) {
-  const actor = await actorFromRequest(request)
-  if (!actor || actor.credentialId) return NextResponse.json({ error: 'Session authentication required' }, { status: 401 })
+  const { actor, response } = await apiGuard(request, undefined, { sessionOnly: true })
+  if (!actor) return response
   const parsed = apiKeyCreateSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
   const plaintext = `tb_live_${randomBytes(32).toString('base64url')}`

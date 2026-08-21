@@ -55,6 +55,7 @@ For a custom domain, set `BETTER_AUTH_URL` to its full HTTPS origin, for example
 | `BETTER_AUTH_SECRET` | Yes | Random secret of at least 32 characters used to sign authentication data. |
 | `BETTER_AUTH_URL` | Production custom domains | Canonical HTTPS origin of the deployed app. Vercel deployment URLs are detected automatically. |
 | `BETTER_AUTH_TRUSTED_ORIGINS` | No | Extra comma-separated origins allowed to call the auth endpoints. |
+| `CRON_SECRET` | No | Enables the scheduled maintenance route. Without it that route stays closed. |
 
 Generate a local authentication secret with:
 
@@ -81,15 +82,7 @@ pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-If `.env.example` is not present in your checkout, create `.env.local` with:
-
-```dotenv
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require
-BETTER_AUTH_SECRET=replace-with-a-random-secret-of-at-least-32-characters
-BETTER_AUTH_URL=http://localhost:3000
-```
-
-Apply the schema and start the development server:
+Fill in `DATABASE_URL` and `BETTER_AUTH_SECRET`, then apply the schema and start the development server:
 
 ```bash
 pnpm db:migrate
@@ -200,6 +193,20 @@ https://YOUR_DOMAIN/api/mcp
 Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer
 credentials only; browser session cookies are rejected. Available tools cover memory search and capture, projects, handoffs, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the complete agent integration and credential-safety guide.
 
+## Limits and retention
+
+Credentialled API and MCP traffic is capped at 120 requests per minute per
+credential, answered with `429` and a `Retry-After` header. Owner browser
+sessions are not counted against that quota. Authentication endpoints carry
+their own limits. Both stores live in Postgres, so a limit bounds the
+deployment rather than one warm serverless instance.
+
+Setting `CRON_SECRET` enables a daily maintenance run that removes expired
+unclaimed workspace claims, spent enrollment tokens, and elapsed rate-limit
+windows. It never touches memories, sessions, projects, or handoffs, and it
+keeps completed claim records because those are what prevent a claimed
+workspace being reset.
+
 ## Scopes
 
 Each agent credential is issued an explicit set. Owner browser sessions are unscoped
@@ -227,7 +234,8 @@ Agents should start a session before meaningful work, send a heartbeat every 30â
 - Give agent keys only the scopes they require, from the vocabulary below.
 - Do not place prompts, source code, environment values, or secrets in telemetry.
 - Treat `401` and `403` responses as hard authorization failures.
-- Revoke a key immediately if it may have been exposed.
+- Revoke a key immediately if it may have been exposed. Revoking an agent from the
+  dashboard disables it and every key issued to it in one step.
 - Keep `DATABASE_URL` and `BETTER_AUTH_SECRET` server-only.
 
 ## Project structure

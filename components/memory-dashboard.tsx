@@ -173,13 +173,13 @@ export function MemoryDashboard({
 
           {view === 'Overview' ? (
             <Section error={summary.error} loading={summary.isLoading && !summary.data} retry={() => { void summary.mutate() }} skeleton={<RowsSkeleton rows={3} />}>
-              {liveSummary ? <Overview summary={liveSummary} memories={allMemories} refresh={refresh} /> : null}
+              {liveSummary ? <Overview summary={liveSummary} memories={allMemories} projects={allProjects} refresh={refresh} /> : null}
             </Section>
           ) : null}
 
           {view === 'Memories' ? (
             <Section error={memories.error} loading={memories.isLoading && !memories.data} retry={() => { void memories.mutate() }} skeleton={<RowsSkeleton />}>
-              <MemoryList items={allMemories} query={activeQuery} refresh={refresh} />
+              <MemoryList items={allMemories} projects={allProjects} query={activeQuery} refresh={refresh} />
               {moreMemories ? (
                 <div className="mt-4 flex items-center justify-center gap-3">
                   <Button variant="outline" size="sm" disabled={memories.isValidating} onClick={() => { void memories.setSize(memories.size + 1) }}>
@@ -212,7 +212,7 @@ export function MemoryDashboard({
           {view === 'Agents' ? (
             <>
               <Section error={agents.error} loading={agents.isLoading && !agents.data} retry={() => { void agents.mutate() }} skeleton={<RowsSkeleton />}>
-                <AgentList items={shownAgents} query={activeQuery} />
+                <AgentList items={shownAgents} query={activeQuery} refresh={refresh} />
               </Section>
               <section className="flex flex-col gap-4">
                 <div>

@@ -91,4 +91,5 @@ Prefer search before capture to avoid duplicate memory. Keep writes concise, fac
 - Generate a client request ID for write retries and avoid replaying a successful write.
 - Back off on `429` and transient `5xx`; do not retry `400`, `401`, or `403` without changing the request or credentials.
 - Use the least-privileged scope. Rotate or revoke a key immediately if exposure is suspected.
+- Requests are capped at 120 per minute per credential. Treat `429` as a signal to back off for the seconds named in `Retry-After`, not to retry immediately.
 - All records remain scoped to the human owner. Never attempt to enumerate another workspace or alter owner identity.
