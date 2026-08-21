@@ -76,6 +76,62 @@ describe('workspace endpoints', { skip }, () => {
     }
   })
 
+  it('closes the maintenance route when no cron secret is configured', async () => {
+    const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
+    // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.
+    assert.ok([401, 404].includes(anonymous.status), `maintenance answered ${anonymous.status} without a secret`)
+  })
+
+  it('reports observed database state rather than a hardcoded status', async () => {
+    const index = await call('/api/v1')
+    assert.equal(index.status, 200)
+    assert.equal(index.body.database, 'reachable')
+    assert.equal(index.body.status, 'ok')
+  })
+
+  it('revoking an agent also kills every key issued to it', async () => {
+    const token = await call('/api/v1/agent-signup-tokens', { method: 'POST', body: JSON.stringify({ agentName: 'revoke test', expiresInMinutes: 15 }) })
+    assert.equal(token.status, 201)
+
+    const boot = await fetch(`${baseUrl}/api/v1/agents/bootstrap`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: token.body.data.token, agentName: 'revoke test' }),
+    })
+    assert.equal(boot.status, 201)
+    const { agent, apiKey } = (await boot.json()).data
+
+    const asAgent = (path: string) => fetch(`${baseUrl}${path}`, { headers: { authorization: `Bearer ${apiKey}` } })
+    assert.equal((await asAgent('/api/v1/memories?limit=1')).status, 200, 'a fresh agent key should work')
+
+    const revoked = await call(`/api/v1/agents/${agent.id}`, { method: 'DELETE' })
+    assert.equal(revoked.status, 200)
+    assert.ok(revoked.body.data.revokedKeys >= 1, 'revoking an agent should revoke its keys')
+
+    assert.equal((await asAgent('/api/v1/memories?limit=1')).status, 401, 'a revoked agent key must stop working')
+    assert.equal((await call(`/api/v1/agents/${agent.id}`, { method: 'DELETE' })).status, 404, 'revoking twice should not succeed twice')
+  })
+
+  it('caps credentialled traffic and leaves owner sessions alone', async () => {
+    const created = await call('/api/v1/api-keys', { method: 'POST', body: JSON.stringify({ name: `quota test ${Date.now()}`, scopes: ['memory:read'] }) })
+    assert.equal(created.status, 201)
+    const key = created.body.data.key
+
+    // The cap is 120 per minute; 130 requests must cross it.
+    const codes: number[] = []
+    for (let batch = 0; batch < 13; batch += 1) {
+      const round = await Promise.all(Array.from({ length: 10 }, () =>
+        fetch(`${baseUrl}/api/v1/memories?limit=1`, { headers: { authorization: `Bearer ${key}` } }).then((r) => r.status)))
+      codes.push(...round)
+    }
+
+    assert.ok(codes.includes(429), 'a credential firing 130 requests in a minute should be throttled')
+    assert.equal(codes.filter((code) => code === 200).length, 120, 'exactly the cap should succeed')
+
+    const session = await call('/api/v1/memories?limit=1')
+    assert.equal(session.status, 200, 'the owner session must not share the credential quota')
+  })
+
   it('finds a memory by a word stem the old substring search would have missed', async () => {
     const created = await call('/api/v1/memories', {
       method: 'POST',
