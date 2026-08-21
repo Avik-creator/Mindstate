@@ -47,13 +47,29 @@ export function MemoryFlow() {
         )
       })}
 
+      {/* Every source feeds the store and the store feeds every sink. Animating one path each way
+          read as a single pulse pairing one agent to one capability, which is not what happens. */}
       <g className="motion-reduce:hidden">
-        <rect width={6} height={6} className="fill-brand">
-          <animateMotion dur="3s" repeatCount="indefinite" path="M 168 40 H 250 V 100 H 280" />
-        </rect>
-        <rect width={6} height={6} className="fill-brand">
-          <animateMotion dur="3s" begin="1.5s" repeatCount="indefinite" path="M 360 100 H 390 V 160 H 472" />
-        </rect>
+        {SOURCES.map((label, index) => (
+          <rect key={`in-${label}`} x={-3} y={-3} width={6} height={6} className="fill-brand">
+            <animateMotion
+              dur="2.4s"
+              begin={`${index * 0.35}s`}
+              repeatCount="indefinite"
+              path={`M 168 ${40 + index * 60} H 250 V 100 H 280`}
+            />
+          </rect>
+        ))}
+        {SINKS.map((label, index) => (
+          <rect key={`out-${label}`} x={-3} y={-3} width={6} height={6} className="fill-brand">
+            <animateMotion
+              dur="2.4s"
+              begin={`${1.2 + index * 0.35}s`}
+              repeatCount="indefinite"
+              path={`M 360 100 H 390 V ${40 + index * 60} H 472`}
+            />
+          </rect>
+        ))}
       </g>
     </svg>
   )
