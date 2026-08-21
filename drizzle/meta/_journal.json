@@ -43,6 +43,13 @@
       "when": 1787254394332,
       "tag": "0005_bouncy_mandarin",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787299666758,
+      "tag": "0006_timestamptz_and_search",
+      "breakpoints": true
     }
   ]
 }

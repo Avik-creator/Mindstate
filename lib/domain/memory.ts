@@ -33,6 +33,7 @@ export type MemorySearch = {
   types?: MemoryType[]
   tags?: string[]
   limit?: number
+  offset?: number
 }
 
 export interface MemoryRepository {
@@ -40,6 +41,7 @@ export interface MemoryRepository {
   findById(actor: Actor, id: string): Promise<MemoryRecord | null>
   update(actor: Actor, id: string, input: Partial<CreateMemoryInput>): Promise<MemoryRecord | null>
   list(actor: Actor, search: MemorySearch): Promise<MemoryRecord[]>
+  count(actor: Actor, search: MemorySearch): Promise<number>
   remove(actor: Actor, id: string): Promise<boolean>
 }
 
