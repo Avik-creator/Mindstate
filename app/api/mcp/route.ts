@@ -83,7 +83,7 @@ const mcp = createMcpHandler((server) => {
     const data = await workspaceService.createProject(actor('project:write'), input)
     return { content: [{ type: 'text', text: `Created project ${data.id}` }], structuredContent: { project: data } }
   })
-  server.registerTool('list_handoffs', { title: 'List handoffs', description: 'List durable agent handoffs.', inputSchema: z.object({}).strict() }, async () => {
+  server.registerTool('list_handoffs', { title: 'List handoffs', description: 'List durable agent handoffs, including whether each is currently held by a live agent.', inputSchema: z.object({}).strict() }, async () => {
     const { data } = await workspaceService.listHandoffs(actor('handoff:read'))
     return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { handoffs: data } }
   })
@@ -91,6 +91,25 @@ const mcp = createMcpHandler((server) => {
     const data = await workspaceService.createHandoff(actor('handoff:write'), input)
     return { content: [{ type: 'text', text: `Created handoff ${data.id}` }], structuredContent: { handoff: data } }
   })
+  server.registerTool('claim_handoff', {
+    title: 'Claim handoff', description: 'Take exclusive ownership of an open handoff. Requires a live session; the claim is released automatically if that session stops heartbeating.',
+    inputSchema: z.object({ handoffId: z.string().uuid(), sessionId: z.string().uuid() }).strict(),
+  }, async ({ handoffId, sessionId }) => {
+    const result = await workspaceService.claimHandoff(actor('handoff:write'), handoffId, sessionId)
+    if (result.error === 'SESSION_NOT_LIVE') throw new Error('Start a session and heartbeat it before claiming work')
+    if (result.error === 'UNAVAILABLE') throw new Error('That handoff is closed or already held by a live agent')
+    return { content: [{ type: 'text', text: `Claimed "${result.handoff.title}". Keep heartbeating ${sessionId} to hold it.` }], structuredContent: { handoff: result.handoff } }
+  })
+
+  server.registerTool('release_handoff', {
+    title: 'Release handoff', description: 'Give up a claimed handoff so another agent can take it.',
+    inputSchema: z.object({ handoffId: z.string().uuid(), sessionId: z.string().uuid() }).strict(),
+  }, async ({ handoffId, sessionId }) => {
+    const released = await workspaceService.releaseHandoff(actor('handoff:write'), handoffId, sessionId)
+    if (!released) throw new Error('That session does not hold this handoff')
+    return { content: [{ type: 'text', text: `Released handoff ${handoffId}.` }], structuredContent: { handoff: released } }
+  })
+
   server.registerTool('report_agent_context', { title: 'Report agent context', description: 'Report runtime and capabilities for explainable automatic agent classification. Never send secrets.', inputSchema: agentTelemetrySchema }, async (input) => {
     const data = await workspaceService.recordAgentTelemetry(actor('agent:write'), input)
     return { content: [{ type: 'text', text: `Agent classified as ${data?.category ?? 'general'}.` }], structuredContent: { agent: data } }

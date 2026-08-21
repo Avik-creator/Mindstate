@@ -10,5 +10,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!actor) return response
   const { id } = await context.params; if (!z.string().uuid().safeParse(id).success) return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid handoff ID' } }, { status: 400 })
   const parsed = updateSchema.safeParse(await request.json().catch(() => null)); if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
-  try { const data = await workspaceService.updateHandoff(actor, id, parsed.data); return data ? NextResponse.json({ data }) : NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Handoff not found' } }, { status: 404 }) } catch (error) { return NextResponse.json({ error: { code: 'INVALID_RELATION', message: error instanceof Error ? error.message : 'Invalid relationship' } }, { status: 400 }) }
+  try { const data = await workspaceService.updateHandoff(actor, id, parsed.data); return data ? NextResponse.json({ data }) : NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Handoff not found' } }, { status: 404 }) } catch (error) {
+    if (error instanceof Error && error.message === 'HANDOFF_HELD') {
+      return NextResponse.json({ error: { code: 'HANDOFF_HELD', message: 'Another live agent is holding this handoff.' } }, { status: 409 })
+    }
+    return NextResponse.json({ error: { code: 'INVALID_RELATION', message: error instanceof Error ? error.message : 'Invalid relationship' } }, { status: 400 })
+  }
 }

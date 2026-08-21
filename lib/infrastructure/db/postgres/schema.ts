@@ -40,8 +40,10 @@ export const memories = pgTable('memories', {
 }, (t) => [index('memories_user_updated_idx').on(t.userId, t.updatedAt), index('memories_project_idx').on(t.userId, t.projectId), index('memories_search_idx').using('gin', t.searchVector)])
 export const handoffs = pgTable('handoffs', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), summary: text('summary').notNull(), nextSteps: jsonb('nextSteps').$type<string[]>().notNull().default([]),
-  status: text('status').notNull().default('open'), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('handoffs_user_idx').on(t.userId), index('handoffs_status_idx').on(t.userId, t.status), index('handoffs_project_idx').on(t.userId, t.projectId)])
+  status: text('status').notNull().default('open'),
+  claimedBySessionId: text('claimedBySessionId'), claimedByAgentId: text('claimedByAgentId'), claimedAt: timestamp('claimedAt', { withTimezone: true }),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index('handoffs_user_idx').on(t.userId), index('handoffs_status_idx').on(t.userId, t.status), index('handoffs_project_idx').on(t.userId, t.projectId), index('handoffs_claim_idx').on(t.userId, t.claimedBySessionId)])
 export const agents = pgTable('agents', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), status: text('status').notNull().default('active'),
   category: text('category').notNull().default('general'), runtimeName: text('runtimeName'), runtimeVersion: text('runtimeVersion'),
