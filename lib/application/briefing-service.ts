@@ -12,10 +12,18 @@ type BriefingInput = { projectId?: string; limit?: number }
 // agent guess search terms; this answers "what should I know" instead.
 export async function buildBriefing(actor: Actor, input: BriefingInput = {}) {
   const limit = Math.min(Math.max(input.limit ?? 40, 1), 100)
-  const memories = await memoryService.find(actor, { projectId: input.projectId, limit })
 
-  const current = memories.filter((memory) => isCurrent(memory.standing))
-  const superseded = memories.filter((memory) => !isCurrent(memory.standing))
+  // Query per type rather than fetching a mixed page and filtering it. Filtering after the limit
+  // meant a decision older than the newest N memories simply never appeared in the briefing.
+  const [decisions, preferences, context] = await Promise.all(
+    (['decision', 'preference', 'context'] as const).map((type) =>
+      memoryService.find(actor, { projectId: input.projectId, types: [type], limit }),
+    ),
+  )
+
+  const all = [...decisions, ...preferences, ...context]
+  const current = all.filter((memory) => isCurrent(memory.standing))
+  const superseded = all.filter((memory) => !isCurrent(memory.standing))
 
   const byType = (type: string) => current.filter((memory) => memory.type === type)
 
@@ -30,10 +38,9 @@ export async function buildBriefing(actor: Actor, input: BriefingInput = {}) {
     }),
   )
 
+  // Filtered in the query, not after, for the same reason.
   const handoffs = can(actor, 'handoff:read')
-    ? (await workspaceService.listHandoffs(actor, { limit: 20 })).data
-        .filter((handoff) => handoff.status === 'open')
-        .filter((handoff) => !input.projectId || handoff.projectId === input.projectId)
+    ? (await workspaceService.listHandoffs(actor, { limit: 20, status: 'open', projectId: input.projectId })).data
         .map((handoff) => ({ id: handoff.id, title: handoff.title, summary: handoff.summary, nextSteps: handoff.nextSteps, claim: handoff.claim }))
     : []
 

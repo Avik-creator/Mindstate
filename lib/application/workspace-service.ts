@@ -101,16 +101,21 @@ export const workspaceService = {
       return { id: row.id }
     })
   },
-  async listHandoffs(actor: Actor, page: PageRequest = {}) {
+  async listHandoffs(actor: Actor, page: PageRequest & { status?: string; projectId?: string } = {}) {
     const bounds = normalizePage(page)
+    const where = and(
+      eq(handoffs.userId, actor.userId),
+      ...(page.status ? [eq(handoffs.status, page.status)] : []),
+      ...(page.projectId ? [eq(handoffs.projectId, page.projectId)] : []),
+    )
     const [rows, [total]] = await Promise.all([
       db.select({
         id: handoffs.id, userId: handoffs.userId, projectId: handoffs.projectId, sessionId: handoffs.sessionId,
         title: handoffs.title, summary: handoffs.summary, nextSteps: handoffs.nextSteps, status: handoffs.status,
         claimedBySessionId: handoffs.claimedBySessionId, claimedByAgentId: handoffs.claimedByAgentId, claimedAt: handoffs.claimedAt,
         createdAt: handoffs.createdAt, updatedAt: handoffs.updatedAt, holderIsLive,
-      }).from(handoffs).where(eq(handoffs.userId, actor.userId)).orderBy(desc(handoffs.updatedAt)).limit(bounds.limit).offset(bounds.offset),
-      db.select({ value: count() }).from(handoffs).where(eq(handoffs.userId, actor.userId)),
+      }).from(handoffs).where(where).orderBy(desc(handoffs.updatedAt)).limit(bounds.limit).offset(bounds.offset),
+      db.select({ value: count() }).from(handoffs).where(where),
     ])
 
     const data = rows.map(({ holderIsLive: live, ...row }) => ({

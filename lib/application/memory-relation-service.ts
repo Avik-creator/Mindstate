@@ -5,7 +5,7 @@ import { and, eq, inArray, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { memories, memoryRelations } from '@/lib/infrastructure/db/postgres/schema'
-import { emptyStanding, RELATION_KINDS, type MemoryStanding } from '@/lib/domain/memory-relation'
+import { canonicalEdge, emptyStanding, RELATION_KINDS, type MemoryStanding } from '@/lib/domain/memory-relation'
 import type { Actor } from '@/lib/domain/memory'
 
 export const relationInputSchema = z.object({
@@ -63,6 +63,15 @@ export async function relate(actor: Actor, fromId: string, input: z.infer<typeof
     .where(and(eq(memories.userId, actor.userId), inArray(memories.id, [fromId, input.targetId])))
   if (owned.length !== 2) throw new RelationError('MEMORY_NOT_FOUND')
 
+  if (input.kind === 'contradicts') {
+    const [existing] = await db.select({ id: memoryRelations.id }).from(memoryRelations).where(and(
+      eq(memoryRelations.userId, actor.userId), eq(memoryRelations.kind, 'contradicts'),
+      eq(memoryRelations.fromId, canonicalEdge('contradicts', fromId, input.targetId).fromId),
+      eq(memoryRelations.toId, canonicalEdge('contradicts', fromId, input.targetId).toId),
+    )).limit(1)
+    if (existing) throw new RelationError('ALREADY_RELATED')
+  }
+
   if (input.kind === 'supersedes') {
     // A supersedes B while B supersedes A would leave both stale and neither current.
     const [reciprocal] = await db.select({ id: memoryRelations.id }).from(memoryRelations).where(and(
@@ -72,8 +81,9 @@ export async function relate(actor: Actor, fromId: string, input: z.infer<typeof
     if (reciprocal) throw new RelationError('RECIPROCAL_SUPERSESSION')
   }
 
+  const edge = canonicalEdge(input.kind, fromId, input.targetId)
   const [row] = await db.insert(memoryRelations).values({
-    id: randomUUID(), userId: actor.userId, fromId, toId: input.targetId, kind: input.kind,
+    id: randomUUID(), userId: actor.userId, fromId: edge.fromId, toId: edge.toId, kind: input.kind,
     note: input.note, actorType: actor.agentId ? 'agent' : 'user', actorId: actor.agentId ?? actor.userId,
   }).onConflictDoNothing().returning()
 
