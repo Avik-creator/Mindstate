@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, ArrowUpRight, Bot, Braces, FileText, Folder, Layers3, LogOut } from 'lucide-react'
+import { Activity, ArrowUpRight, Bot, Braces, FileText, Folder, Layers3, LogOut, ScrollText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { authClient } from '@/lib/auth-client'
@@ -13,6 +13,7 @@ const nav: Array<{ label: View; icon: typeof Layers3 }> = [
   { label: 'Sessions', icon: Activity },
   { label: 'Handoffs', icon: ArrowUpRight },
   { label: 'Agents', icon: Bot },
+  { label: 'Activity', icon: ScrollText },
 ]
 
 function Brand() {

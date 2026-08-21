@@ -12,6 +12,7 @@ import { fetcher } from '@/components/dashboard/api'
 import { usePagedList } from '@/components/dashboard/use-paged-list'
 import { LoadMore } from '@/components/dashboard/load-more'
 import { CardsSkeleton, LoadError, RowsSkeleton } from '@/components/dashboard/states'
+import { ActivityList } from '@/components/dashboard/views/activity'
 import { AgentList } from '@/components/dashboard/views/agents'
 import { CredentialList } from '@/components/dashboard/views/credentials'
 import { HandoffList } from '@/components/dashboard/views/handoffs'
@@ -19,7 +20,7 @@ import { MemoryList } from '@/components/dashboard/views/memories'
 import { Overview } from '@/components/dashboard/views/overview'
 import { ProjectList } from '@/components/dashboard/views/projects'
 import { SessionList } from '@/components/dashboard/views/sessions'
-import type { Agent, ApiKey, Handoff, Memory, Project, Session, Summary, View } from '@/components/dashboard/types'
+import type { Agent, ApiKey, AuditEvent, Handoff, Memory, Project, Session, Summary, View } from '@/components/dashboard/types'
 
 // Views the search box filters on the server; the rest filter what is already loaded.
 const SERVER_SEARCH: View[] = ['Overview', 'Memories']
@@ -32,6 +33,7 @@ const SEARCH_PLACEHOLDER: Record<View, string> = {
   Sessions: 'Filter sessions',
   Handoffs: 'Filter handoffs',
   Agents: 'Filter agents',
+  Activity: 'Filter recorded actions',
 }
 
 // Sessions and agents are created by enrolled agents, never by hand.
@@ -85,6 +87,7 @@ export function MemoryDashboard({
   const handoffs = usePagedList<Handoff>('/api/v1/handoffs', { refreshInterval: 30000 })
   const agents = usePagedList<Agent>('/api/v1/agents', { refreshInterval: 30000 })
   const apiKeys = useSWR<{ data: ApiKey[] }>('/api/v1/api-keys', fetcher, { refreshInterval: 60000 })
+  const activity = usePagedList<AuditEvent>('/api/v1/audit', { refreshInterval: 60000 })
 
   const allProjects = projects.items
   const allMemories = memories.items
@@ -92,6 +95,7 @@ export function MemoryDashboard({
   const allHandoffs = handoffs.items
   const allAgents = agents.items
   const allApiKeys = apiKeys.data?.data ?? []
+  const allActivity = activity.items
 
   const localQuery = SERVER_SEARCH.includes(view) ? '' : debouncedQuery.trim()
   const shownProjects = useMemo(
@@ -112,7 +116,7 @@ export function MemoryDashboard({
   )
 
   async function refresh() {
-    await Promise.all([summary.mutate(), memories.refresh(), projects.refresh(), sessions.refresh(), handoffs.refresh(), agents.refresh(), apiKeys.mutate()])
+    await Promise.all([summary.mutate(), memories.refresh(), projects.refresh(), sessions.refresh(), handoffs.refresh(), agents.refresh(), apiKeys.mutate(), activity.refresh()])
   }
 
   const liveSummary = summary.data ? { ...summary.data.data, projects: projects.total } : undefined
@@ -195,6 +199,13 @@ export function MemoryDashboard({
             <Section error={handoffs.error} loading={handoffs.loading} retry={() => { void handoffs.refresh() }} skeleton={<CardsSkeleton />}>
               <HandoffList items={shownHandoffs} query={activeQuery} refresh={refresh} />
               {handoffs.hasMore ? <LoadMore shown={allHandoffs.length} total={handoffs.total} busy={handoffs.busy} onClick={handoffs.loadMore} /> : null}
+            </Section>
+          ) : null}
+
+          {view === 'Activity' ? (
+            <Section error={activity.error} loading={activity.loading} retry={() => { void activity.refresh() }} skeleton={<RowsSkeleton />}>
+              <ActivityList items={allActivity} />
+              {activity.hasMore ? <LoadMore shown={allActivity.length} total={activity.total} busy={activity.busy} onClick={activity.loadMore} /> : null}
             </Section>
           ) : null}
 

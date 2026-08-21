@@ -3,6 +3,7 @@ import 'server-only'
 import { and, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { db } from './client'
 import { memories } from './schema'
+import { recordAudit } from '@/lib/application/audit-service'
 import { toTsQuery } from '@/lib/domain/text-search'
 import type { Actor, CreateMemoryInput, MemoryRecord, MemoryRepository, MemorySearch, MemorySearchRepository } from '@/lib/domain/memory'
 
@@ -52,7 +53,16 @@ export class PostgresMemoryRepository implements MemoryRepository, MemorySearchR
   }
 
   async remove(actor: Actor, id: string) {
-    const deleted = await db.delete(memories).where(and(eq(memories.id, id), eq(memories.userId, actor.userId))).returning({ id: memories.id })
-    return deleted.length > 0
+    return db.transaction(async (tx) => {
+      const [deleted] = await tx.delete(memories)
+        .where(and(eq(memories.id, id), eq(memories.userId, actor.userId)))
+        .returning({ id: memories.id, title: memories.title, type: memories.type })
+      if (!deleted) return false
+      await recordAudit(actor, {
+        action: 'memory.delete', targetType: 'memory', targetId: deleted.id,
+        summary: deleted.title, metadata: { type: deleted.type },
+      }, tx)
+      return true
+    })
   }
 }

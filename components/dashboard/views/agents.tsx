@@ -18,12 +18,19 @@ export function AgentList({ items, query, refresh }: { items: Agent[]; query?: s
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-medium">{agent.name}</h3>
             <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-              {agent.runtimeName ?? 'Runtime not reported'} · {agent.capabilities.length} capabilities · seen {relativeTime(agent.lastSeenAt)}
+              says {agent.runtimeName ?? 'nothing'} · seen {relativeTime(agent.lastSeenAt)}
+            </p>
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+              observed {agent.observedUserAgent ?? 'no user-agent'} · {agent.observedRequests} requests
+              {agent.observedSurfaces.length ? ` · ${agent.observedSurfaces.join(', ')}` : ''}
             </p>
           </div>
           <Badge variant="outline">{agent.category}</Badge>
-          <span className="font-mono text-[10px] uppercase text-muted-foreground" title="Derived from what the agent reported about itself">
-            {agent.confidence} confidence · self-reported
+          <span
+            className={`font-mono text-[10px] uppercase ${agent.verification.status === 'inconsistent' ? 'text-destructive' : agent.verification.status === 'consistent' ? 'text-brand' : 'text-muted-foreground'}`}
+            title={agent.verification.reason}
+          >
+            {agent.verification.status}
           </span>
           {agent.revokedAt ? (
             <Badge variant="outline">Revoked {relativeTime(agent.revokedAt)}</Badge>
