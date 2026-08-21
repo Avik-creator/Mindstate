@@ -6,6 +6,7 @@ import { toTsQuery } from '../lib/domain/text-search.ts'
 import { verifyAgentIdentity } from '../lib/domain/agent-identity.ts'
 import { claimState, isAvailable } from '../lib/domain/handoff-claim.ts'
 import { CLAIM_LEASE_AFTER_MS, SESSION_STALE_AFTER_MS } from '../lib/domain/agent-session.ts'
+import { emptyStanding, isCurrent, isDisputed } from '../lib/domain/memory-relation.ts'
 import { normalizePage, MAX_LIMIT } from '../lib/domain/pagination.ts'
 
 function request(headers: Record<string, string>) {
@@ -156,5 +157,24 @@ describe('heartbeat thresholds', () => {
       SESSION_STALE_AFTER_MS < CLAIM_LEASE_AFTER_MS,
       'presence must dim before work is taken away, never after',
     )
+  })
+})
+
+describe('memory standing', () => {
+  const ref = { id: 'm2', title: 'Newer', note: '' }
+
+  it('treats a memory as current until something supersedes it', () => {
+    assert.equal(isCurrent(emptyStanding()), true)
+    assert.equal(isCurrent({ ...emptyStanding(), supersededBy: [ref] }), false)
+  })
+
+  it('keeps a contradicted memory current, because neither side wins', () => {
+    const disputed = { ...emptyStanding(), contradicts: [ref] }
+    assert.equal(isDisputed(disputed), true)
+    assert.equal(isCurrent(disputed), true, 'a contradiction flags both sides, it does not retire either')
+  })
+
+  it('does not treat superseding others as being superseded', () => {
+    assert.equal(isCurrent({ ...emptyStanding(), supersedes: [ref] }), true)
   })
 })

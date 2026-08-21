@@ -7,6 +7,8 @@ import { memoryService, sessionService } from '@/lib/application/container'
 import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-schema'
 import { sessionCreateSchema } from '@/lib/application/session-schema'
 import { agentTelemetrySchema, handoffInputSchema, projectInputSchema, workspaceService } from '@/lib/application/workspace-service'
+import { relate, relationInputSchema, RelationError } from '@/lib/application/memory-relation-service'
+import { buildBriefing } from '@/lib/application/briefing-service'
 import type { Actor } from '@/lib/domain/memory'
 import type { Scope } from '@/lib/domain/scopes'
 
@@ -38,11 +40,37 @@ const mcp = createMcpHandler((server) => {
   })
 
   server.registerTool('get_context', {
-    title: 'Get context', description: 'Retrieve recent context for a project or session.',
+    title: 'Get context', description: 'Retrieve recent context for a project or session. Returns memories in recency order without weighing supersession; prefer get_briefing when starting work.',
     inputSchema: z.object({ projectId: z.string().optional(), sessionId: z.string().optional(), limit: z.number().int().min(1).max(100).default(30) }).strict(),
   }, async (input) => {
     const data = await memoryService.find(actor('memory:read'), input)
     return { content: [{ type: 'text', text: data.map((item) => `${item.type.toUpperCase()}: ${item.title}\n${item.content}`).join('\n\n') }], structuredContent: { memories: data } }
+  })
+
+  server.registerTool('get_briefing', {
+    title: 'Get briefing', description: 'What to know before working on a project: current decisions and preferences, open handoffs, and any unresolved contradictions. Superseded memories are listed separately and never presented as current. Prefer this over search at the start of a session.',
+    inputSchema: z.object({ projectId: z.string().uuid().optional(), limit: z.number().int().min(1).max(100).optional() }).strict(),
+  }, async (input) => {
+    const data = await buildBriefing(actor('memory:read'), input)
+    const lines = [
+      `${data.decisions.length} decisions, ${data.preferences.length} preferences, ${data.openHandoffs.length} open handoffs`,
+      data.contradictions.length ? `${data.contradictions.length} unresolved contradiction(s) — read both sides before acting` : 'No known contradictions',
+      data.superseded.length ? `${data.superseded.length} memory(ies) superseded and excluded from the above` : '',
+    ].filter(Boolean)
+    return { content: [{ type: 'text', text: lines.join('\n') }], structuredContent: data }
+  })
+
+  server.registerTool('relate_memories', {
+    title: 'Relate memories', description: 'Record that one memory supersedes or contradicts another. Superseding marks the older memory stale without deleting it, so the change stays visible. Use contradicts when both may be true or neither clearly wins.',
+    inputSchema: z.object({ memoryId: z.string().uuid() }).extend(relationInputSchema.shape).strict(),
+  }, async ({ memoryId, ...input }) => {
+    try {
+      const data = await relate(actor('memory:write'), memoryId, input)
+      return { content: [{ type: 'text', text: `Recorded: ${memoryId} ${input.kind} ${input.targetId}` }], structuredContent: { relation: data } }
+    } catch (error) {
+      if (error instanceof RelationError) throw new Error(`Could not record that relationship: ${error.message}`)
+      throw error
+    }
   })
 
   server.registerTool('start_session', {

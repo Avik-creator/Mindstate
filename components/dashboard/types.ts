@@ -1,5 +1,7 @@
 export type View = 'Overview' | 'Memories' | 'Projects' | 'Sessions' | 'Handoffs' | 'Agents' | 'Activity'
 
+export type RelationRef = { id: string; title: string; note: string }
+
 export type Memory = {
   id: string
   title: string
@@ -9,6 +11,11 @@ export type Memory = {
   tags: string[]
   source: string
   updatedAt: string
+  standing: {
+    supersededBy: RelationRef[]
+    supersedes: RelationRef[]
+    contradicts: RelationRef[]
+  }
 }
 
 export type Project = {
