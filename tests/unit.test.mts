@@ -4,6 +4,7 @@ import { clientAddress } from '../lib/dal/client-address.ts'
 import { can, LEGACY_SCOPE_EXPANSION, SCOPES } from '../lib/domain/scopes.ts'
 import { toTsQuery } from '../lib/domain/text-search.ts'
 import { verifyAgentIdentity } from '../lib/domain/agent-identity.ts'
+import { claimState, isAvailable } from '../lib/domain/handoff-claim.ts'
 import { normalizePage, MAX_LIMIT } from '../lib/domain/pagination.ts'
 
 function request(headers: Record<string, string>) {
@@ -114,5 +115,23 @@ describe('normalizePage', () => {
     const page = normalizePage()
     assert.ok(page.limit > 0 && page.limit <= MAX_LIMIT)
     assert.equal(page.offset, 0)
+  })
+})
+
+describe('handoff claims', () => {
+  it('is unclaimed when nobody holds it', () => {
+    assert.equal(claimState({ claimedBySessionId: null, holderIsLive: false }), 'unclaimed')
+  })
+
+  it('is held only while the holding session is alive', () => {
+    assert.equal(claimState({ claimedBySessionId: 'session-1', holderIsLive: true }), 'held')
+    assert.equal(claimState({ claimedBySessionId: 'session-1', holderIsLive: false }), 'expired')
+  })
+
+  it('returns work to the pool when the holder dies, but not when it is closed', () => {
+    assert.equal(isAvailable({ status: 'open', claim: 'expired' }), true, 'a dead holder must free the work')
+    assert.equal(isAvailable({ status: 'open', claim: 'unclaimed' }), true)
+    assert.equal(isAvailable({ status: 'open', claim: 'held' }), false)
+    assert.equal(isAvailable({ status: 'closed', claim: 'expired' }), false, 'closed work is not up for grabs')
   })
 })

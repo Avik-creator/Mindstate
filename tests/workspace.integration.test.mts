@@ -137,6 +137,58 @@ describe('workspace endpoints', { skip }, () => {
     }
   })
 
+  it('gives a handoff to exactly one agent, and returns it when that agent stops', async () => {
+    const handoff = await call('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ title: `claim test ${Date.now()}`, summary: 'work to be picked up', nextSteps: [] }) })
+    assert.equal(handoff.status, 201)
+    const handoffId = handoff.body.data.id
+
+    const first = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'claim test one' }) })
+    const second = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'claim test two' }) })
+    const firstId = first.body.data.id
+    const secondId = second.body.data.id
+
+    try {
+      const claim = (sessionId: string) => call(`/api/v1/handoffs/${handoffId}/claim`, { method: 'POST', body: JSON.stringify({ sessionId }) })
+
+      assert.equal((await claim(firstId)).status, 200, 'the first claim should succeed')
+      assert.equal((await claim(secondId)).status, 409, 'a live holder must block a second claim')
+
+      // Completing the session ends the lease, which is the same path a crashed agent takes.
+      assert.equal((await call(`/api/v1/sessions/${firstId}`, { method: 'DELETE' })).status, 200)
+
+      const afterDeath = await call('/api/v1/handoffs?limit=100')
+      const row = afterDeath.body.data.find((h: { id: string }) => h.id === handoffId)
+      assert.equal(row.claim.state, 'expired', 'a claim must not outlive the session holding it')
+
+      assert.equal((await claim(secondId)).status, 200, 'work must return to the pool when its holder stops')
+
+      assert.equal(
+        (await call(`/api/v1/handoffs/${handoffId}/release`, { method: 'POST', body: JSON.stringify({ sessionId: firstId }) })).status,
+        409,
+        'only the holder may release',
+      )
+      assert.equal(
+        (await call(`/api/v1/handoffs/${handoffId}/release`, { method: 'POST', body: JSON.stringify({ sessionId: secondId }) })).status,
+        200,
+      )
+    } finally {
+      await call(`/api/v1/sessions/${secondId}`, { method: 'DELETE' })
+      await call(`/api/v1/handoffs/${handoffId}`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) })
+    }
+  })
+
+  it('refuses a claim from a session that is not live', async () => {
+    const handoff = await call('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ title: `dead session test ${Date.now()}`, summary: 'x', nextSteps: [] }) })
+    const session = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'already finished' }) })
+    await call(`/api/v1/sessions/${session.body.data.id}`, { method: 'DELETE' })
+
+    const result = await call(`/api/v1/handoffs/${handoff.body.data.id}/claim`, { method: 'POST', body: JSON.stringify({ sessionId: session.body.data.id }) })
+    assert.equal(result.status, 409)
+    assert.equal(result.body.error.code, 'SESSION_NOT_LIVE')
+
+    await call(`/api/v1/handoffs/${handoff.body.data.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) })
+  })
+
   it('closes the maintenance route when no cron secret is configured', async () => {
     const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
     // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.

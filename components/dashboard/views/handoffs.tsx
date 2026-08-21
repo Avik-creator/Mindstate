@@ -8,6 +8,25 @@ import { relativeTime, send } from '@/components/dashboard/api'
 import { Empty, NoMatches } from '@/components/dashboard/states'
 import type { Handoff } from '@/components/dashboard/types'
 
+// An expired claim is worth showing as its own state: it means an agent took the work and died,
+// which is different from nobody having picked it up.
+function ClaimBadge({ claim }: { claim: Handoff['claim'] }) {
+  if (claim.state === 'unclaimed') return null
+  if (claim.state === 'held') {
+    return (
+      <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-brand">
+        <span className="size-1.5 bg-brand" aria-hidden="true" />
+        held {claim.claimedAt ? relativeTime(claim.claimedAt) : ''}
+      </span>
+    )
+  }
+  return (
+    <span className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground" title="The agent holding this stopped heartbeating, so it is available again">
+      claim expired
+    </span>
+  )
+}
+
 function StatusToggle({ handoff, refresh }: { handoff: Handoff; refresh: () => Promise<void> }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -47,7 +66,10 @@ export function HandoffList({ items, query, refresh }: { items: Handoff[]; query
             <Badge variant={handoff.status === 'open' ? 'default' : 'secondary'}>{handoff.status}</Badge>
           </div>
           <p className="mt-3 line-clamp-4 text-sm leading-6 text-muted-foreground">{handoff.summary}</p>
-          <p className="mt-3 font-mono text-[10px] text-muted-foreground">updated {relativeTime(handoff.updatedAt)}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="font-mono text-[10px] text-muted-foreground">updated {relativeTime(handoff.updatedAt)}</p>
+            <ClaimBadge claim={handoff.claim} />
+          </div>
           <StatusToggle handoff={handoff} refresh={refresh} />
         </article>
       ))}

@@ -7,6 +7,7 @@ import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infrastructure/db/postgres/schema'
 import { recordAudit } from '@/lib/application/audit-service'
 import { verifyAgentIdentity } from '@/lib/domain/agent-identity'
+import { claimState } from '@/lib/domain/handoff-claim'
 import { SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
 import type { Actor } from '@/lib/domain/memory'
 import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
@@ -43,6 +44,15 @@ async function ownedSession(userId: string, id: string) {
   const [row] = await db.select({ id: agentSessions.id }).from(agentSessions).where(and(eq(agentSessions.userId, userId), eq(agentSessions.id, id))).limit(1)
   return row
 }
+
+
+// True while the session holding a claim is still active and heartbeating.
+const holderIsLive = sql<boolean>`exists (
+  select 1 from agent_sessions s
+  where s."id" = "handoffs"."claimedBySessionId"
+    and s."status" = 'active'
+    and s."lastHeartbeatAt" >= now() - make_interval(secs => ${SESSION_STALE_AFTER_MS / 1000})
+)`
 
 export const workspaceService = {
   async summary(actor: Actor) {
@@ -93,11 +103,51 @@ export const workspaceService = {
   },
   async listHandoffs(actor: Actor, page: PageRequest = {}) {
     const bounds = normalizePage(page)
-    const [data, [total]] = await Promise.all([
-      db.select().from(handoffs).where(eq(handoffs.userId, actor.userId)).orderBy(desc(handoffs.updatedAt)).limit(bounds.limit).offset(bounds.offset),
+    const [rows, [total]] = await Promise.all([
+      db.select({
+        id: handoffs.id, userId: handoffs.userId, projectId: handoffs.projectId, sessionId: handoffs.sessionId,
+        title: handoffs.title, summary: handoffs.summary, nextSteps: handoffs.nextSteps, status: handoffs.status,
+        claimedBySessionId: handoffs.claimedBySessionId, claimedByAgentId: handoffs.claimedByAgentId, claimedAt: handoffs.claimedAt,
+        createdAt: handoffs.createdAt, updatedAt: handoffs.updatedAt, holderIsLive,
+      }).from(handoffs).where(eq(handoffs.userId, actor.userId)).orderBy(desc(handoffs.updatedAt)).limit(bounds.limit).offset(bounds.offset),
       db.select({ value: count() }).from(handoffs).where(eq(handoffs.userId, actor.userId)),
     ])
+
+    const data = rows.map(({ holderIsLive: live, ...row }) => ({
+      ...row,
+      claim: {
+        state: claimState({ claimedBySessionId: row.claimedBySessionId, holderIsLive: Boolean(live) }),
+        agentId: row.claimedByAgentId, sessionId: row.claimedBySessionId, claimedAt: row.claimedAt,
+      },
+    }))
     return { data, page: { ...bounds, total: Number(total?.value ?? 0) } }
+  },
+
+  // One guarded UPDATE, so two agents racing for the same handoff cannot both win.
+  async claimHandoff(actor: Actor, id: string, sessionId: string) {
+    const [session] = await db.select({ id: agentSessions.id }).from(agentSessions).where(and(
+      eq(agentSessions.id, sessionId), eq(agentSessions.userId, actor.userId), eq(agentSessions.status, 'active'),
+      sql`${agentSessions.lastHeartbeatAt} >= now() - make_interval(secs => ${SESSION_STALE_AFTER_MS / 1000})`,
+    )).limit(1)
+    if (!session) return { error: 'SESSION_NOT_LIVE' as const }
+
+    const [row] = await db.update(handoffs)
+      .set({ claimedBySessionId: sessionId, claimedByAgentId: actor.agentId ?? null, claimedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(handoffs.id, id), eq(handoffs.userId, actor.userId), eq(handoffs.status, 'open'),
+        sql`(${handoffs.claimedBySessionId} is null or ${handoffs.claimedBySessionId} = ${sessionId} or not ${holderIsLive})`,
+      ))
+      .returning({ id: handoffs.id, title: handoffs.title, claimedAt: handoffs.claimedAt })
+    if (!row) return { error: 'UNAVAILABLE' as const }
+    return { handoff: row }
+  },
+
+  async releaseHandoff(actor: Actor, id: string, sessionId: string) {
+    const [row] = await db.update(handoffs)
+      .set({ claimedBySessionId: null, claimedByAgentId: null, claimedAt: null, updatedAt: new Date() })
+      .where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId), eq(handoffs.claimedBySessionId, sessionId)))
+      .returning({ id: handoffs.id })
+    return row ?? null
   },
   async createHandoff(actor: Actor, input: z.infer<typeof handoffInputSchema>) {
     if (input.projectId && !(await ownedProject(actor.userId, input.projectId))) throw new Error('PROJECT_NOT_FOUND')
@@ -107,7 +157,20 @@ export const workspaceService = {
   async updateHandoff(actor: Actor, id: string, input: Partial<z.infer<typeof handoffInputSchema>> & { status?: 'open' | 'closed' }) {
     if (input.projectId && !(await ownedProject(actor.userId, input.projectId))) throw new Error('PROJECT_NOT_FOUND')
     if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
-    const [row] = await db.update(handoffs).set({ ...input, updatedAt: new Date() }).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).returning(); return row ?? null
+
+    // An agent may not change work another live agent is holding. The owner always may.
+    const claimGuard = actor.credentialId
+      ? [sql`(${handoffs.claimedBySessionId} is null or not ${holderIsLive} or ${handoffs.claimedByAgentId} = ${actor.agentId ?? ''})`]
+      : []
+
+    const [row] = await db.update(handoffs).set({ ...input, updatedAt: new Date() })
+      .where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId), ...claimGuard)).returning()
+    if (row) return row
+
+    // Distinguish "held by someone else" from "does not exist", so the caller is not told the wrong thing.
+    const [exists] = await db.select({ id: handoffs.id }).from(handoffs).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).limit(1)
+    if (exists) throw new Error('HANDOFF_HELD')
+    return null
   },
   async listAgents(actor: Actor, page: PageRequest = {}) {
     const bounds = normalizePage(page)

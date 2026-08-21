@@ -38,6 +38,12 @@ export type Handoff = {
   projectId: string | null
   nextSteps: string[]
   updatedAt: string
+  claim: {
+    state: 'unclaimed' | 'held' | 'expired'
+    agentId: string | null
+    sessionId: string | null
+    claimedAt: string | null
+  }
 }
 
 export type Agent = {
