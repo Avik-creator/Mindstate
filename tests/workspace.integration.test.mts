@@ -48,7 +48,7 @@ describe('workspace endpoints', { skip }, () => {
       assert.equal(summary.body.data.sessions.stale, stale, 'summary and session list disagree on stale sessions')
       assert.ok(live >= 1, 'a session started moments ago must read as live')
     } finally {
-      await call(`/api/v1/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) })
+      await call(`/api/v1/sessions/${sessionId}`, { method: 'DELETE' })
     }
   })
 
