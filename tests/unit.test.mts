@@ -6,7 +6,7 @@ import { toTsQuery } from '../lib/domain/text-search.ts'
 import { verifyAgentIdentity } from '../lib/domain/agent-identity.ts'
 import { claimState, isAvailable } from '../lib/domain/handoff-claim.ts'
 import { CLAIM_LEASE_AFTER_MS, SESSION_STALE_AFTER_MS } from '../lib/domain/agent-session.ts'
-import { emptyStanding, isCurrent, isDisputed } from '../lib/domain/memory-relation.ts'
+import { canonicalEdge, emptyStanding, isCurrent, isDisputed } from '../lib/domain/memory-relation.ts'
 import { normalizePage, MAX_LIMIT } from '../lib/domain/pagination.ts'
 
 function request(headers: Record<string, string>) {
@@ -176,5 +176,17 @@ describe('memory standing', () => {
 
   it('does not treat superseding others as being superseded', () => {
     assert.equal(isCurrent({ ...emptyStanding(), supersedes: [ref] }), true)
+  })
+})
+
+describe('canonicalEdge', () => {
+  it('orders a contradiction the same way regardless of who asserts it', () => {
+    // Without this the same disagreement is stored twice, once per side, and each memory then
+    // lists the other twice.
+    assert.deepEqual(canonicalEdge('contradicts', 'b', 'a'), canonicalEdge('contradicts', 'a', 'b'))
+  })
+
+  it('leaves supersession alone, because direction is its meaning', () => {
+    assert.deepEqual(canonicalEdge('supersedes', 'b', 'a'), { fromId: 'b', toId: 'a' })
   })
 })

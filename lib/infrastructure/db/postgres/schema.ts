@@ -91,7 +91,8 @@ export const auditEvents = pgTable('audit_events', {
 // of how a decision changed, and deleting them would lose exactly what makes this useful.
 export const memoryRelations = pgTable('memory_relations', {
   id: text('id').primaryKey(), userId: text('userId').notNull(),
-  fromId: text('fromId').notNull(), toId: text('toId').notNull(),
+  fromId: text('fromId').notNull().references(() => memories.id, { onDelete: 'cascade' }),
+  toId: text('toId').notNull().references(() => memories.id, { onDelete: 'cascade' }),
   kind: text('kind').notNull(), note: text('note').notNull().default(''),
   actorType: text('actorType').notNull().default('user'), actorId: text('actorId'),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),

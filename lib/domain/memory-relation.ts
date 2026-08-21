@@ -24,3 +24,11 @@ export function isCurrent(standing: MemoryStanding) {
 export function isDisputed(standing: MemoryStanding) {
   return standing.contradicts.length > 0
 }
+
+// Contradiction has no direction. Storing it under whichever memory happened to assert it first
+// let the same disagreement be recorded twice, once per side. Canonicalising the pair makes the
+// unique index mean what it says.
+export function canonicalEdge(kind: RelationKind, fromId: string, toId: string) {
+  if (kind !== 'contradicts') return { fromId, toId }
+  return fromId < toId ? { fromId, toId } : { fromId: toId, toId: fromId }
+}
