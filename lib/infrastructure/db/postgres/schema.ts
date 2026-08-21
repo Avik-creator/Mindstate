@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { bigint, boolean, customType, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { bigint, boolean, customType, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' })
 
@@ -26,24 +26,37 @@ export const verification = pgTable('verification', {
 export const projects = pgTable('projects', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), description: text('description').notNull().default(''),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('projects_user_idx').on(t.userId)])
+}, (t) => [index('projects_user_idx').on(t.userId), uniqueIndex('projects_user_id_uidx').on(t.userId, t.id)])
 export const agentSessions = pgTable('agent_sessions', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), agentId: text('agentId'), title: text('title').notNull(), agent: text('agent').notNull().default('manual'), status: text('status').notNull().default('active'),
   metadata: jsonb('metadata').$type<Record<string, string>>().notNull().default({}), lastHeartbeatAt: timestamp('lastHeartbeatAt', { withTimezone: true }).notNull().defaultNow(), endedAt: timestamp('endedAt', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('sessions_user_idx').on(t.userId), index('sessions_live_idx').on(t.userId, t.status, t.lastHeartbeatAt), index('sessions_agent_idx').on(t.userId, t.agentId)])
+}, (t) => [
+  index('sessions_user_idx').on(t.userId), index('sessions_live_idx').on(t.userId, t.status, t.lastHeartbeatAt), index('sessions_agent_idx').on(t.userId, t.agentId),
+  uniqueIndex('agent_sessions_user_id_uidx').on(t.userId, t.id),
+  // Paired with userId, so a session can only sit in a project of the same workspace.
+  foreignKey({ name: 'agent_sessions_project_fk', columns: [t.userId, t.projectId], foreignColumns: [projects.userId, projects.id] }),
+])
 export const memories = pgTable('memories', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), content: text('content').notNull(),
   type: text('type').notNull().default('context'), tags: jsonb('tags').$type<string[]>().notNull().default([]), source: text('source').notNull().default('manual'), actorType: text('actorType').notNull().default('user'), actorId: text('actorId'),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
   searchVector: tsvector('searchVector').generatedAlwaysAs(sql`setweight(to_tsvector('english', coalesce("title", '')), 'A') || setweight(to_tsvector('english', coalesce("content", '')), 'B')`),
-}, (t) => [index('memories_user_updated_idx').on(t.userId, t.updatedAt), index('memories_project_idx').on(t.userId, t.projectId), index('memories_search_idx').using('gin', t.searchVector)])
+}, (t) => [
+  index('memories_user_updated_idx').on(t.userId, t.updatedAt), index('memories_project_idx').on(t.userId, t.projectId), index('memories_search_idx').using('gin', t.searchVector),
+  foreignKey({ name: 'memories_project_fk', columns: [t.userId, t.projectId], foreignColumns: [projects.userId, projects.id] }),
+  foreignKey({ name: 'memories_session_fk', columns: [t.userId, t.sessionId], foreignColumns: [agentSessions.userId, agentSessions.id] }),
+])
 export const handoffs = pgTable('handoffs', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), projectId: text('projectId'), sessionId: text('sessionId'), title: text('title').notNull(), summary: text('summary').notNull(), nextSteps: jsonb('nextSteps').$type<string[]>().notNull().default([]),
   status: text('status').notNull().default('open'),
   claimedBySessionId: text('claimedBySessionId'), claimedByAgentId: text('claimedByAgentId'), claimedAt: timestamp('claimedAt', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [index('handoffs_user_idx').on(t.userId), index('handoffs_status_idx').on(t.userId, t.status), index('handoffs_project_idx').on(t.userId, t.projectId), index('handoffs_claim_idx').on(t.userId, t.claimedBySessionId)])
+}, (t) => [
+  index('handoffs_user_idx').on(t.userId), index('handoffs_status_idx').on(t.userId, t.status), index('handoffs_project_idx').on(t.userId, t.projectId), index('handoffs_claim_idx').on(t.userId, t.claimedBySessionId),
+  foreignKey({ name: 'handoffs_project_fk', columns: [t.userId, t.projectId], foreignColumns: [projects.userId, projects.id] }),
+  foreignKey({ name: 'handoffs_session_fk', columns: [t.userId, t.sessionId], foreignColumns: [agentSessions.userId, agentSessions.id] }),
+])
 export const agents = pgTable('agents', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), status: text('status').notNull().default('active'),
   category: text('category').notNull().default('general'), runtimeName: text('runtimeName'), runtimeVersion: text('runtimeVersion'),
