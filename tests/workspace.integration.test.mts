@@ -189,6 +189,49 @@ describe('workspace endpoints', { skip }, () => {
     await call(`/api/v1/handoffs/${handoff.body.data.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) })
   })
 
+  it('refuses to file a record against a project the caller cannot see', async () => {
+    // A project id nobody owns exercises the same guard as one belonging to another account.
+    const stranger = '00000000-0000-0000-0000-000000000000'
+    const mine = await call('/api/v1/projects', { method: 'POST', body: JSON.stringify({ name: `ref probe ${Date.now()}`, description: '' }) })
+    const projectId = mine.body.data.id
+
+    try {
+      const memory = await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title: 'ref probe', content: 'c', projectId: stranger }) })
+      assert.equal(memory.status, 400, 'a memory must not be filed against an unreachable project')
+      assert.equal(memory.body.error.code, 'INVALID_RELATION')
+
+      const session = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'ref probe', projectId: stranger }) })
+      assert.equal(session.status, 400, 'a session must not be filed against an unreachable project')
+
+      const handoff = await call('/api/v1/handoffs', { method: 'POST', body: JSON.stringify({ title: 'ref probe', summary: 's', nextSteps: [], projectId: stranger }) })
+      assert.equal(handoff.status, 400, 'handoffs already refused this and must continue to')
+
+      // The same field must still work when it points at something the caller owns.
+      const allowed = await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title: 'ref probe ok', content: 'c', projectId }) })
+      assert.equal(allowed.status, 201)
+
+      const moved = await call(`/api/v1/memories/${allowed.body.data.id}`, { method: 'PATCH', body: JSON.stringify({ projectId: stranger }) })
+      assert.equal(moved.status, 400, 'an update must not move a memory somewhere unreachable either')
+
+      await call(`/api/v1/memories/${allowed.body.data.id}`, { method: 'DELETE' })
+    } finally {
+      await call(`/api/v1/projects/${projectId}`, { method: 'DELETE' })
+    }
+  })
+
+  it('reports a handoff that does not exist as missing, not as work someone holds', async () => {
+    const session = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'missing handoff probe' }) })
+    const sessionId = session.body.data.id
+
+    try {
+      const result = await call('/api/v1/handoffs/00000000-0000-0000-0000-000000000000/claim', { method: 'POST', body: JSON.stringify({ sessionId }) })
+      assert.equal(result.status, 404, 'a typo must not be reported as a live agent holding the work')
+      assert.equal(result.body.error.code, 'NOT_FOUND')
+    } finally {
+      await call(`/api/v1/sessions/${sessionId}`, { method: 'DELETE' })
+    }
+  })
+
   it('keeps a superseded memory findable while stopping it reading as current', async () => {
     const stamp = Date.now()
     const make = async (title: string, content: string) =>
