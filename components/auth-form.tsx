@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ArrowRight, Braces } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -44,7 +45,7 @@ export function AuthForm({ mode }: { mode: 'sign-in' | 'sign-up' }) {
             {mode === 'sign-up' && <label className="flex flex-col gap-2 text-sm font-medium">Name<Input name="name" required autoComplete="name" placeholder="Your name" /></label>}
             <label className="flex flex-col gap-2 text-sm font-medium">Email<Input name="email" type="email" required autoComplete="email" placeholder="you@example.com" /></label>
             <label className="flex flex-col gap-2 text-sm font-medium">Password<Input name="password" type="password" minLength={8} required autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} /></label>
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
             <Button type="submit" size="lg" disabled={pending}>{pending ? 'Please wait…' : mode === 'sign-up' ? 'Create workspace' : 'Sign in'}<ArrowRight data-icon="inline-end" /></Button>
           </form>
           <p className="mt-6 text-sm text-muted-foreground">{mode === 'sign-up' ? 'Already have an account?' : 'New to Mindstate?'} <Link className="text-foreground underline underline-offset-4" href={mode === 'sign-up' ? '/sign-in' : '/sign-up'}>{mode === 'sign-up' ? 'Sign in' : 'Create an account'}</Link></p>

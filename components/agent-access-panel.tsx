@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Bot, Check, Copy, KeyRound, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
@@ -49,7 +50,7 @@ export function AgentAccessPanel() {
         </Button>
       </div>
       {result ? <div className="mt-3 rounded-md bg-secondary p-3"><code className="block break-all font-mono text-[10px]">{result.token}</code><Button variant="ghost" size="sm" className="mt-2 w-full" onClick={copyToken}>{copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}{copied ? 'Copied' : 'Copy once'}</Button></div> : null}
-      {error ? <p role="alert" className="mt-3 text-xs text-destructive">{error}</p> : null}
+      {error ? <Alert className="mt-3" variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
     </section>
   )
 }
