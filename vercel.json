@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [{ "path": "/api/v1/maintenance", "schedule": "0 4 * * *" }]
+  "buildCommand": "pnpm build && node scripts/deploy-migrate.mjs",
+  "crons": [
+    {
+      "path": "/api/v1/maintenance",
+      "schedule": "0 4 * * *"
+    }
+  ]
 }
