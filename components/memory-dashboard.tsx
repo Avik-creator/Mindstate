@@ -212,7 +212,7 @@ export function MemoryDashboard({
           {view === 'Agents' ? (
             <>
               <Section error={agents.error} loading={agents.isLoading && !agents.data} retry={() => { void agents.mutate() }} skeleton={<RowsSkeleton />}>
-                <AgentList items={shownAgents} query={activeQuery} />
+                <AgentList items={shownAgents} query={activeQuery} refresh={refresh} />
               </Section>
               <section className="flex flex-col gap-4">
                 <div>

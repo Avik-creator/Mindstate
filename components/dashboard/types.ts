@@ -49,6 +49,7 @@ export type Agent = {
   capabilities: string[]
   confidence: string
   lastSeenAt: string | null
+  revokedAt: string | null
 }
 
 export type ApiKey = {
