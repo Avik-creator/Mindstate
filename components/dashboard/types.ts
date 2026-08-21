@@ -1,4 +1,4 @@
-export type View = 'Overview' | 'Memories' | 'Projects' | 'Sessions' | 'Handoffs' | 'Agents'
+export type View = 'Overview' | 'Memories' | 'Projects' | 'Sessions' | 'Handoffs' | 'Agents' | 'Activity'
 
 export type Memory = {
   id: string
@@ -50,6 +50,10 @@ export type Agent = {
   confidence: string
   lastSeenAt: string | null
   revokedAt: string | null
+  observedUserAgent: string | null
+  observedSurfaces: string[]
+  observedRequests: number
+  verification: { status: 'unverified' | 'consistent' | 'inconsistent'; reason: string }
 }
 
 export type ApiKey = {
@@ -66,6 +70,16 @@ export type MemoryPage = {
   page: { limit: number; offset: number; total: number }
 }
 
+export type AuditEvent = {
+  id: string
+  action: string
+  actorType: 'user' | 'agent'
+  targetType: string
+  targetId: string
+  summary: string
+  createdAt: string
+}
+
 export type Summary = {
   memories: number
   projects: number
@@ -76,7 +90,7 @@ export type Summary = {
 
 export const MEMORY_TYPES: Memory['type'][] = ['decision', 'context', 'preference', 'handoff']
 
-export const VIEWS: View[] = ['Overview', 'Memories', 'Projects', 'Sessions', 'Handoffs', 'Agents']
+export const VIEWS: View[] = ['Overview', 'Memories', 'Projects', 'Sessions', 'Handoffs', 'Agents', 'Activity']
 
 export function isView(value: string | undefined): value is View {
   return !!value && (VIEWS as string[]).includes(value)

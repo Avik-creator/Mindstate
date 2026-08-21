@@ -46,6 +46,7 @@ export const agents = pgTable('agents', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), name: text('name').notNull(), status: text('status').notNull().default('active'),
   category: text('category').notNull().default('general'), runtimeName: text('runtimeName'), runtimeVersion: text('runtimeVersion'),
   capabilities: jsonb('capabilities').$type<string[]>().notNull().default([]), detectionSignals: jsonb('detectionSignals').$type<string[]>().notNull().default([]), confidence: text('confidence').notNull().default('low'),
+  observedUserAgent: text('observedUserAgent'), observedSurfaces: jsonb('observedSurfaces').$type<string[]>().notNull().default([]), observedRequests: integer('observedRequests').notNull().default(0),
   lastSeenAt: timestamp('lastSeenAt', { withTimezone: true }), revokedAt: timestamp('revokedAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('agents_user_idx').on(t.userId), index('agents_category_idx').on(t.userId, t.category)])
 export const workspaceClaims = pgTable('workspace_claims', {
@@ -74,3 +75,12 @@ export const apiRateLimits = pgTable('api_rate_limits', {
   key: text('key').primaryKey(), count: integer('count').notNull().default(0),
   expiresAt: timestamp('expiresAt', { withTimezone: true }).notNull(),
 }, (t) => [index('api_rate_limits_expiry_idx').on(t.expiresAt)])
+
+// Append-only. Destructive actions are recorded here because the rows they act on are gone.
+export const auditEvents = pgTable('audit_events', {
+  id: text('id').primaryKey(), userId: text('userId').notNull(),
+  actorType: text('actorType').notNull(), actorId: text('actorId'), credentialId: text('credentialId'),
+  action: text('action').notNull(), targetType: text('targetType').notNull(), targetId: text('targetId').notNull(),
+  summary: text('summary').notNull().default(''), metadata: jsonb('metadata').$type<Record<string, string>>().notNull().default({}),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index('audit_user_created_idx').on(t.userId, t.createdAt), index('audit_target_idx').on(t.userId, t.targetType, t.targetId)])

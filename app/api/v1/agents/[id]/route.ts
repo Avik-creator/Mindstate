@@ -1,6 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { recordAudit } from '@/lib/application/audit-service'
 import { apiGuard } from '@/lib/dal/api-guard'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, apiKeys } from '@/lib/infrastructure/db/postgres/schema'
@@ -15,11 +16,15 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   const revoked = await db.transaction(async (tx) => {
     const [agent] = await tx.update(agents).set({ revokedAt: new Date(), status: 'revoked' })
       .where(and(eq(agents.id, id), eq(agents.userId, actor.userId), isNull(agents.revokedAt)))
-      .returning({ id: agents.id })
+      .returning({ id: agents.id, name: agents.name })
     if (!agent) return null
     const keys = await tx.update(apiKeys).set({ revokedAt: new Date() })
       .where(and(eq(apiKeys.agentId, id), eq(apiKeys.userId, actor.userId), isNull(apiKeys.revokedAt)))
       .returning({ id: apiKeys.id })
+    await recordAudit(actor, {
+      action: 'agent.revoke', targetType: 'agent', targetId: agent.id,
+      summary: agent.name, metadata: { revokedKeys: String(keys.length) },
+    }, tx)
     return { id: agent.id, revokedKeys: keys.length }
   })
 

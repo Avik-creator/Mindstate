@@ -5,6 +5,8 @@ import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infrastructure/db/postgres/schema'
+import { recordAudit } from '@/lib/application/audit-service'
+import { verifyAgentIdentity } from '@/lib/domain/agent-identity'
 import { SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
 import type { Actor } from '@/lib/domain/memory'
 import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
@@ -80,7 +82,14 @@ export const workspaceService = {
       db.select({ value: count() }).from(handoffs).where(and(eq(handoffs.userId, actor.userId), eq(handoffs.projectId, id))),
     ])
     if (memory.value + session.value + handoff.value > 0) return { conflict: true }
-    const [row] = await db.delete(projects).where(and(eq(projects.id, id), eq(projects.userId, actor.userId))).returning({ id: projects.id }); return row ?? null
+    return db.transaction(async (tx) => {
+      const [row] = await tx.delete(projects)
+        .where(and(eq(projects.id, id), eq(projects.userId, actor.userId)))
+        .returning({ id: projects.id, name: projects.name })
+      if (!row) return null
+      await recordAudit(actor, { action: 'project.delete', targetType: 'project', targetId: row.id, summary: row.name }, tx)
+      return { id: row.id }
+    })
   },
   async listHandoffs(actor: Actor, page: PageRequest = {}) {
     const bounds = normalizePage(page)
@@ -103,12 +112,14 @@ export const workspaceService = {
   async listAgents(actor: Actor, page: PageRequest = {}) {
     const bounds = normalizePage(page)
     const [data, [total]] = await Promise.all([
-      this.agentRows(actor, bounds),
+      this.agentRows(actor, bounds).then((rows) =>
+        rows.map((row) => ({ ...row, verification: verifyAgentIdentity({ declaredRuntime: row.runtimeName, observedUserAgent: row.observedUserAgent, observedRequests: row.observedRequests }) })),
+      ),
       db.select({ value: count() }).from(agents).where(eq(agents.userId, actor.userId)),
     ])
     return { data, page: { ...bounds, total: Number(total?.value ?? 0) } }
   },
-  agentRows(actor: Actor, bounds: { limit: number; offset: number }) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, lastSeenAt: agents.lastSeenAt, revokedAt: agents.revokedAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)).limit(bounds.limit).offset(bounds.offset) },
+  agentRows(actor: Actor, bounds: { limit: number; offset: number }) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, observedUserAgent: agents.observedUserAgent, observedSurfaces: agents.observedSurfaces, observedRequests: agents.observedRequests, lastSeenAt: agents.lastSeenAt, revokedAt: agents.revokedAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)).limit(bounds.limit).offset(bounds.offset) },
   async recordAgentTelemetry(actor: Actor, input: z.infer<typeof agentTelemetrySchema>) {
     if (!actor.agentId) throw new Error('AGENT_REQUIRED')
     const evidence = [...new Set([input.runtimeName, ...input.capabilities, ...input.signals].filter(Boolean) as string[])]

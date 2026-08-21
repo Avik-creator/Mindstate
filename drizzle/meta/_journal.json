@@ -64,6 +64,13 @@
       "when": 1787303023466,
       "tag": "0008_rate_limit_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787309965723,
+      "tag": "0009_audit_and_observed_identity",
+      "breakpoints": true
     }
   ]
 }
