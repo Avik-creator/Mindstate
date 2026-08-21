@@ -22,7 +22,7 @@ export function Protocol() {
           {steps.map((step, index) => (
             <div
               key={step.id}
-              className={`flex flex-col gap-3 p-6 ${index < steps.length - 1 ? 'border-b-2 border-foreground lg:border-b-0 lg:border-r-2' : ''}`}
+              className={`cell flex flex-col gap-3 p-6 ${index < steps.length - 1 ? 'border-b-2 border-foreground lg:border-b-0 lg:border-r-2' : ''}`}
             >
               <span className="font-pixel text-2xl text-brand">{step.id}</span>
               <h3 className="text-xs uppercase tracking-[0.2em]">{step.title}</h3>
@@ -33,7 +33,7 @@ export function Protocol() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
           {surfaces.map((surface) => (
-            <div key={surface.name} className="border-2 border-foreground p-6">
+            <div key={surface.name} className="cell border-2 border-foreground p-6">
               <h3 className="font-pixel text-3xl">{surface.name}</h3>
               <p className="mt-2 text-[11px] leading-5 text-muted-foreground">{surface.detail}</p>
             </div>

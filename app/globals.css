@@ -217,3 +217,82 @@
     }
   }
 }
+
+@layer components {
+  /* Physical press. The block shadow is the depth, so hover lifts off it and active drops onto it. */
+  .press {
+    --press-shadow: var(--foreground);
+    transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), box-shadow 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .press:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 0 var(--press-shadow);
+  }
+  .press:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0 0 0 0 var(--press-shadow);
+  }
+  .press:focus-visible {
+    outline: 2px solid var(--press-shadow);
+    outline-offset: 3px;
+  }
+
+  /* A rule that wipes in from the left rather than fading. */
+  .wipe {
+    position: relative;
+  }
+  .wipe::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -3px;
+    height: 1.5px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .wipe:hover::after,
+  .wipe:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  /* Bento cells answer the cursor with a tint, not a lift, so the grid stays rigid. */
+  .cell {
+    transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .cell:hover {
+    background-color: color-mix(in oklab, var(--foreground) 4%, transparent);
+  }
+
+  .marquee-track {
+    animation: marquee var(--duration, 34s) linear infinite;
+  }
+  .marquee-host:hover .marquee-track,
+  .marquee-host:focus-within .marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+@layer utilities {
+  /* Anchored sections should not sit flush against the viewport edge on arrival. */
+  [id] {
+    scroll-margin-top: 2rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .press,
+    .wipe::after,
+    .cell {
+      transition: none;
+    }
+    .press:hover,
+    .press:active {
+      transform: none;
+    }
+    .marquee-track {
+      animation: none;
+    }
+  }
+}

@@ -19,8 +19,8 @@ export function Compatibility() {
     <section id="agents" className="w-full px-6 py-16 lg:px-12">
       <SectionLabel label="SECTION: SPEAKS_MCP" index="003" />
       <Reveal>
-        <div className="overflow-hidden border-2 border-foreground">
-          <div className="flex w-max animate-marquee">
+        <div className="marquee-host overflow-hidden border-2 border-foreground">
+          <div className="marquee-track flex w-max">
             {[...CLIENTS, ...CLIENTS].map((name, index) => (
               <div
                 key={`${name}-${index}`}

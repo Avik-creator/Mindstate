@@ -19,7 +19,7 @@ export function Closing() {
               <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   href="/sign-up"
-                  className="group flex items-center bg-background text-sm uppercase tracking-wider text-foreground transition-transform duration-150 hover:-translate-y-px"
+                  className="press group flex items-center bg-background text-sm uppercase tracking-wider text-foreground [--press-shadow:var(--background)]"
                 >
                   <span className="flex size-10 items-center justify-center bg-brand text-brand-foreground">
                     <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
@@ -28,7 +28,7 @@ export function Closing() {
                 </Link>
                 <Link
                   href="/skill.md"
-                  className="border border-background px-5 py-2.5 text-sm uppercase tracking-wider transition-colors duration-150 hover:bg-background hover:text-foreground"
+                  className="press border border-background px-5 py-2.5 text-sm uppercase tracking-wider [--press-shadow:var(--background)]"
                 >
                   Read the agent guide
                 </Link>
@@ -59,7 +59,7 @@ export function Closing() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-[10px] uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                className="wipe text-[10px] uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground"
               >
                 {link.label}
               </Link>

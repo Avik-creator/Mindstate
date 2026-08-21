@@ -30,7 +30,7 @@ export function Hero() {
         <div className={cn(enter, 'flex flex-wrap items-center justify-center gap-3 delay-500')}>
           <Link
             href="/sign-up"
-            className="group flex items-center bg-foreground text-sm uppercase tracking-wider text-background transition-transform duration-150 hover:-translate-y-px"
+            className="press group flex items-center bg-foreground text-sm uppercase tracking-wider text-background"
           >
             <span className="flex size-10 items-center justify-center bg-brand text-brand-foreground">
               <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
@@ -39,7 +39,7 @@ export function Hero() {
           </Link>
           <Link
             href="#protocol"
-            className="border border-foreground px-5 py-2.5 text-sm uppercase tracking-wider transition-colors duration-150 hover:bg-foreground hover:text-background"
+            className="press border border-foreground px-5 py-2.5 text-sm uppercase tracking-wider"
           >
             Connect an agent
           </Link>

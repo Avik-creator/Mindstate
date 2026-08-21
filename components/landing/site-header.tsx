@@ -23,7 +23,7 @@ export function SiteHeader() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-xs uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground"
+                className="wipe text-xs uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground"
               >
                 {link.label}
               </Link>
@@ -33,13 +33,13 @@ export function SiteHeader() {
           <div className="flex items-center gap-4">
             <Link
               href="/sign-in"
-              className="hidden text-xs uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground sm:block"
+              className="wipe hidden text-xs uppercase tracking-widest text-muted-foreground transition-colors duration-200 hover:text-foreground sm:block"
             >
               Log in
             </Link>
             <Link
               href="/sign-up"
-              className="bg-foreground px-4 py-2 text-xs uppercase tracking-widest text-background transition-transform duration-150 hover:-translate-y-px"
+              className="press bg-foreground px-4 py-2 text-xs uppercase tracking-widest text-background"
             >
               Create workspace
             </Link>
