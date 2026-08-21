@@ -245,6 +245,73 @@ describe('workspace endpoints', { skip }, () => {
     }
   })
 
+  it('records a contradiction once however many sides assert it', async () => {
+    const make = async (title: string) =>
+      (await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title, content: 'x', type: 'decision' }) })).body.data
+    const a = await make(`symmetry probe a ${Date.now()}`)
+    const b = await make(`symmetry probe b ${Date.now()}`)
+
+    try {
+      const relate = (from: string, target: string) =>
+        call(`/api/v1/memories/${from}/relations`, { method: 'POST', body: JSON.stringify({ kind: 'contradicts', targetId: target }) })
+
+      assert.equal((await relate(a.id, b.id)).status, 201)
+      assert.equal((await relate(b.id, a.id)).status, 409, 'the same disagreement asserted from the other side is a duplicate')
+
+      const found = await call(`/api/v1/memories?q=symmetry+probe&limit=20`)
+      for (const memory of found.body.data) {
+        assert.equal(memory.standing.contradicts.length, 1, `${memory.title} should list the disagreement once`)
+      }
+    } finally {
+      await call(`/api/v1/memories/${a.id}`, { method: 'DELETE' })
+      await call(`/api/v1/memories/${b.id}`, { method: 'DELETE' })
+    }
+  })
+
+  it('does not leave a relation pointing at a deleted memory', async () => {
+    const make = async (title: string) =>
+      (await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title, content: 'x', type: 'decision' }) })).body.data
+    const a = await make(`orphan probe a ${Date.now()}`)
+    const b = await make(`orphan probe b ${Date.now()}`)
+
+    try {
+      assert.equal((await call(`/api/v1/memories/${a.id}/relations`, { method: 'POST', body: JSON.stringify({ kind: 'contradicts', targetId: b.id }) })).status, 201)
+      assert.equal((await call(`/api/v1/memories/${a.id}`, { method: 'DELETE' })).status, 204)
+
+      const found = await call(`/api/v1/memories?q=orphan+probe&limit=20`)
+      const survivor = found.body.data.find((m: { id: string }) => m.id === b.id)
+      assert.ok(survivor)
+      assert.equal(survivor.standing.contradicts.length, 0, 'a relation must not outlive the memory it points at')
+    } finally {
+      await call(`/api/v1/memories/${b.id}`, { method: 'DELETE' })
+    }
+  })
+
+  it('does not lose a decision buried under newer memories of another type', async () => {
+    const stamp = Date.now()
+    const created: string[] = []
+    const make = async (title: string, type: string) => {
+      const row = (await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title, content: 'x', type }) })).body.data
+      created.push(row.id)
+      return row
+    }
+
+    try {
+      const decision = await make(`buried decision ${stamp}`, 'decision')
+      for (let i = 0; i < 8; i += 1) await make(`burying context ${stamp} ${i}`, 'context')
+
+      // A briefing that limits first and filters by type afterwards would return zero decisions here.
+      const briefing = await call('/api/v1/workspace/briefing?limit=5')
+      assert.equal(briefing.status, 200)
+      assert.ok(
+        briefing.body.data.decisions.some((m: { id: string }) => m.id === decision.id),
+        'a decision must not disappear because newer memories of another type crowded it out',
+      )
+    } finally {
+      for (const id of created) await call(`/api/v1/memories/${id}`, { method: 'DELETE' })
+    }
+  })
+
   it('closes the maintenance route when no cron secret is configured', async () => {
     const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
     // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.
