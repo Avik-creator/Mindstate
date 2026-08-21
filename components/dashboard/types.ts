@@ -51,6 +51,20 @@ export type Agent = {
   lastSeenAt: string | null
 }
 
+export type ApiKey = {
+  id: string
+  name: string
+  prefix: string
+  lastUsedAt: string | null
+  revokedAt: string | null
+  createdAt: string
+}
+
+export type MemoryPage = {
+  data: Memory[]
+  page: { limit: number; offset: number; total: number }
+}
+
 export type Summary = {
   memories: number
   projects: number

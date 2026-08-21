@@ -1,7 +1,8 @@
 import { z } from 'zod'
+import { SCOPES } from '@/lib/domain/scopes'
 
-export const scopeSchema = z.enum(['memory:read', 'memory:write', 'session:read', 'session:write'])
-export const scopesSchema = z.array(scopeSchema).min(1).max(4).transform((scopes) => [...new Set(scopes)])
+export const scopeSchema = z.enum(SCOPES)
+export const scopesSchema = z.array(scopeSchema).min(1).max(SCOPES.length).transform((scopes) => [...new Set(scopes)])
 export const agentNameSchema = z.string().trim().min(2).max(80)
 export const idSchema = z.string().uuid()
 
@@ -13,7 +14,7 @@ export const apiKeyCreateSchema = z.object({
 
 export const signupTokenCreateSchema = z.object({
   agentName: agentNameSchema,
-  scopes: scopesSchema.default(['memory:read', 'memory:write', 'session:read', 'session:write']),
+  scopes: scopesSchema.default([...SCOPES]),
   expiresInMinutes: z.number().int().min(5).max(60).default(15),
 }).strict()
 

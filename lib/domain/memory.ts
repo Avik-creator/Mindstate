@@ -1,8 +1,10 @@
+import type { Scope } from '@/lib/domain/scopes'
+
 export type Actor = {
   userId: string
   credentialId?: string
   agentId?: string
-  scopes?: Array<'memory:read' | 'memory:write' | 'session:read' | 'session:write'>
+  scopes?: Scope[]
 }
 
 export type MemoryType = 'decision' | 'context' | 'preference' | 'handoff'
@@ -33,6 +35,7 @@ export type MemorySearch = {
   types?: MemoryType[]
   tags?: string[]
   limit?: number
+  offset?: number
 }
 
 export interface MemoryRepository {
@@ -40,6 +43,7 @@ export interface MemoryRepository {
   findById(actor: Actor, id: string): Promise<MemoryRecord | null>
   update(actor: Actor, id: string, input: Partial<CreateMemoryInput>): Promise<MemoryRecord | null>
   list(actor: Actor, search: MemorySearch): Promise<MemoryRecord[]>
+  count(actor: Actor, search: MemorySearch): Promise<number>
   remove(actor: Actor, id: string): Promise<boolean>
 }
 

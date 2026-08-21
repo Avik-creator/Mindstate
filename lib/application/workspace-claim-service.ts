@@ -25,6 +25,7 @@ function digest(value: string) {
 }
 
 export class ClaimRateLimitError extends Error {}
+export class ClaimAlreadyCompletedError extends Error {}
 
 export async function createWorkspaceClaim(input: z.infer<typeof workspaceClaimInputSchema>, requester: string, origin: string) {
   const requesterHash = digest(requester)
@@ -37,13 +38,15 @@ export async function createWorkspaceClaim(input: z.infer<typeof workspaceClaimI
   const token = randomBytes(32).toString('base64url')
   const now = new Date()
   const expiresAt = new Date(now.getTime() + CLAIM_TTL_MS)
-  await db.insert(workspaceClaims).values({
+  const [row] = await db.insert(workspaceClaims).values({
     id: randomUUID(), email: input.email, name: input.name, agentName: input.agentName,
     agentContext: input.agentContext ?? {}, tokenHash: digest(token), requesterHash, expiresAt,
   }).onConflictDoUpdate({
     target: workspaceClaims.email,
     set: { name: input.name, agentName: input.agentName, agentContext: input.agentContext ?? {}, tokenHash: digest(token), requesterHash, expiresAt, claimStartedAt: null, claimedAt: null, updatedAt: now },
-  })
+    setWhere: isNull(workspaceClaims.claimedAt),
+  }).returning({ id: workspaceClaims.id })
+  if (!row) throw new ClaimAlreadyCompletedError('Workspace already claimed')
   return { claimUrl: `${origin}/claim/${token}`, expiresAt }
 }
 

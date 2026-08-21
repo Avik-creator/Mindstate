@@ -6,6 +6,15 @@ import type {
   MemorySearchRepository,
 } from '@/lib/domain/memory'
 
+function normalize(search: MemorySearch) {
+  return {
+    ...search,
+    query: search.query?.trim(),
+    limit: Math.min(Math.max(search.limit ?? 20, 1), 100),
+    offset: Math.max(search.offset ?? 0, 0),
+  }
+}
+
 export class MemoryService {
   constructor(
     private readonly memories: MemoryRepository,
@@ -36,15 +45,22 @@ export class MemoryService {
   }
 
   async find(actor: Actor, search: MemorySearch) {
-    const safeSearch = {
-      ...search,
-      query: search.query?.trim(),
-      limit: Math.min(Math.max(search.limit ?? 20, 1), 100),
-    }
+    const safeSearch = normalize(search)
 
     return safeSearch.query
       ? this.searchIndex.search(actor, safeSearch)
       : this.memories.list(actor, safeSearch)
+  }
+
+  // Same query as find(), plus the total so a caller knows whether more pages exist.
+  async findPage(actor: Actor, search: MemorySearch) {
+    const safeSearch = normalize(search)
+    const [data, total] = await Promise.all([
+      safeSearch.query ? this.searchIndex.search(actor, safeSearch) : this.memories.list(actor, safeSearch),
+      this.memories.count(actor, safeSearch),
+    ])
+
+    return { data, page: { limit: safeSearch.limit, offset: safeSearch.offset, total } }
   }
 
   async delete(actor: Actor, id: string) {

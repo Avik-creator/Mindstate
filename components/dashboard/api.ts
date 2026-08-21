@@ -11,8 +11,10 @@ export async function send(url: string, method: string, data?: unknown) {
     headers: { 'content-type': 'application/json' },
     body: data ? JSON.stringify(data) : undefined,
   })
-  const body = await response.json()
-  if (!response.ok) throw new Error(body.error?.message ?? 'Request failed')
+  // DELETE routes answer 204 with no body, so parsing unconditionally would report a success as a failure.
+  const body: { error?: { message?: string } } | null =
+    response.status === 204 ? null : await response.json().catch(() => null)
+  if (!response.ok) throw new Error(body?.error?.message ?? 'Request failed')
   return body
 }
 

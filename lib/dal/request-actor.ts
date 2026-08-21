@@ -7,11 +7,10 @@ import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, apiKeys } from '@/lib/infrastructure/db/postgres/schema'
 import type { Actor } from '@/lib/domain/memory'
 
-export function can(actor: Actor, scope: 'memory:read' | 'memory:write' | 'session:read' | 'session:write') {
-  return !actor.credentialId || actor.scopes?.includes(scope) === true
-}
+export { can } from '@/lib/domain/scopes'
 
-export async function actorFromRequest(request: Request): Promise<Actor | null> {
+// `bearerOnly` refuses session cookies, for endpoints that must not be reachable from a browser context.
+export async function actorFromRequest(request: Request, options?: { bearerOnly?: boolean }): Promise<Actor | null> {
   const authorization = request.headers.get('authorization')
   if (authorization?.startsWith('Bearer ')) {
     const token = authorization.slice(7).trim()
@@ -26,6 +25,8 @@ export async function actorFromRequest(request: Request): Promise<Actor | null> 
     await db.update(apiKeys).set({ lastUsedAt: new Date() }).where(eq(apiKeys.id, key.id))
     return { userId: key.userId, credentialId: key.id, agentId: key.agentId ?? undefined, scopes: key.scopes as Actor['scopes'] }
   }
+
+  if (options?.bearerOnly) return null
 
   const session = await auth.api.getSession({ headers: request.headers })
   return session?.user ? { userId: session.user.id } : null

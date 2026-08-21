@@ -8,6 +8,7 @@ import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-sc
 const searchSchema = z.object({
   q: z.string().optional(), projectId: z.string().optional(), sessionId: z.string().optional(),
   type: memoryTypeSchema.optional(), limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
 })
 
 export async function GET(request: Request) {
@@ -18,8 +19,8 @@ export async function GET(request: Request) {
   const parsed = searchSchema.safeParse(Object.fromEntries(url.searchParams))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
   const { q, type, ...filters } = parsed.data
-  const data = await memoryService.find(actor, { query: q, types: type ? [type] : undefined, ...filters })
-  return NextResponse.json({ data })
+  const { data, page } = await memoryService.findPage(actor, { query: q, types: type ? [type] : undefined, ...filters })
+  return NextResponse.json({ data, page })
 }
 
 export async function POST(request: Request) {
