@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server'
 import { apiGuard } from '@/lib/dal/api-guard'
 import { projectInputSchema, workspaceService } from '@/lib/application/workspace-service'
-import { validationError } from '@/lib/application/contracts'
+import { pageQuerySchema, validationError } from '@/lib/application/contracts'
 
 export async function GET(request: Request) {
   const { actor, response } = await apiGuard(request, 'project:read')
   if (!actor) return response
-  return NextResponse.json({ data: await workspaceService.listProjects(actor) })
+  const parsed = pageQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams))
+  if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
+  return NextResponse.json(await workspaceService.listProjects(actor, parsed.data))
 }
 export async function POST(request: Request) {
   const { actor, response } = await apiGuard(request, 'project:write')

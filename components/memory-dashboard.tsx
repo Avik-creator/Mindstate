@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
-import useSWRInfinite from 'swr/infinite'
 import { Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +9,8 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { CreateDialog, type CreateKind } from '@/components/dashboard/create-dialog'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { fetcher } from '@/components/dashboard/api'
+import { usePagedList } from '@/components/dashboard/use-paged-list'
+import { LoadMore } from '@/components/dashboard/load-more'
 import { CardsSkeleton, LoadError, RowsSkeleton } from '@/components/dashboard/states'
 import { AgentList } from '@/components/dashboard/views/agents'
 import { CredentialList } from '@/components/dashboard/views/credentials'
@@ -18,12 +19,11 @@ import { MemoryList } from '@/components/dashboard/views/memories'
 import { Overview } from '@/components/dashboard/views/overview'
 import { ProjectList } from '@/components/dashboard/views/projects'
 import { SessionList } from '@/components/dashboard/views/sessions'
-import type { Agent, ApiKey, Handoff, MemoryPage, Project, Session, Summary, View } from '@/components/dashboard/types'
+import type { Agent, ApiKey, Handoff, Memory, Project, Session, Summary, View } from '@/components/dashboard/types'
 
 // Views the search box filters on the server; the rest filter what is already loaded.
 const SERVER_SEARCH: View[] = ['Overview', 'Memories']
 
-const PAGE_SIZE = 50
 
 const SEARCH_PLACEHOLDER: Record<View, string> = {
   Overview: 'Search memories',
@@ -79,28 +79,18 @@ export function MemoryDashboard({
   }
 
   const summary = useSWR<{ data: Summary }>('/api/v1/workspace/summary', fetcher, { refreshInterval: 15000 })
-  const memories = useSWRInfinite<MemoryPage>(
-    (index, previous) => {
-      if (previous && previous.data.length < PAGE_SIZE) return null
-      const search = serverQuery ? `&q=${encodeURIComponent(serverQuery)}` : ''
-      return `/api/v1/memories?limit=${PAGE_SIZE}&offset=${index * PAGE_SIZE}${search}`
-    },
-    fetcher,
-    { refreshInterval: 30000, keepPreviousData: true },
-  )
-  const projects = useSWR<{ data: Project[] }>('/api/v1/projects', fetcher, { refreshInterval: 30000 })
-  const sessions = useSWR<{ data: Session[] }>('/api/v1/sessions?limit=100', fetcher, { refreshInterval: 15000 })
-  const handoffs = useSWR<{ data: Handoff[] }>('/api/v1/handoffs', fetcher, { refreshInterval: 30000 })
-  const agents = useSWR<{ data: Agent[] }>('/api/v1/agents', fetcher, { refreshInterval: 30000 })
+  const memories = usePagedList<Memory>('/api/v1/memories', { refreshInterval: 30000, query: serverQuery })
+  const projects = usePagedList<Project>('/api/v1/projects', { refreshInterval: 30000 })
+  const sessions = usePagedList<Session>('/api/v1/sessions', { refreshInterval: 15000 })
+  const handoffs = usePagedList<Handoff>('/api/v1/handoffs', { refreshInterval: 30000 })
+  const agents = usePagedList<Agent>('/api/v1/agents', { refreshInterval: 30000 })
   const apiKeys = useSWR<{ data: ApiKey[] }>('/api/v1/api-keys', fetcher, { refreshInterval: 60000 })
 
-  const allProjects = projects.data?.data ?? []
-  const allMemories = memories.data?.flatMap((page) => page.data) ?? []
-  const totalMemories = memories.data?.[0]?.page.total ?? 0
-  const moreMemories = allMemories.length < totalMemories
-  const allSessions = sessions.data?.data ?? []
-  const allHandoffs = handoffs.data?.data ?? []
-  const allAgents = agents.data?.data ?? []
+  const allProjects = projects.items
+  const allMemories = memories.items
+  const allSessions = sessions.items
+  const allHandoffs = handoffs.items
+  const allAgents = agents.items
   const allApiKeys = apiKeys.data?.data ?? []
 
   const localQuery = SERVER_SEARCH.includes(view) ? '' : debouncedQuery.trim()
@@ -122,10 +112,10 @@ export function MemoryDashboard({
   )
 
   async function refresh() {
-    await Promise.all([summary.mutate(), memories.mutate(), projects.mutate(), sessions.mutate(), handoffs.mutate(), agents.mutate(), apiKeys.mutate()])
+    await Promise.all([summary.mutate(), memories.refresh(), projects.refresh(), sessions.refresh(), handoffs.refresh(), agents.refresh(), apiKeys.mutate()])
   }
 
-  const liveSummary = summary.data ? { ...summary.data.data, projects: allProjects.length } : undefined
+  const liveSummary = summary.data ? { ...summary.data.data, projects: projects.total } : undefined
   const createKind = CREATE_KIND[view]
   const activeQuery = debouncedQuery.trim()
 
@@ -181,41 +171,38 @@ export function MemoryDashboard({
           ) : null}
 
           {view === 'Memories' ? (
-            <Section error={memories.error} loading={memories.isLoading && !memories.data} retry={() => { void memories.mutate() }} skeleton={<RowsSkeleton />}>
+            <Section error={memories.error} loading={memories.loading} retry={() => { void memories.refresh() }} skeleton={<RowsSkeleton />}>
               <MemoryList items={allMemories} projects={allProjects} query={activeQuery} refresh={refresh} />
-              {moreMemories ? (
-                <div className="mt-4 flex items-center justify-center gap-3">
-                  <Button variant="outline" size="sm" disabled={memories.isValidating} onClick={() => { void memories.setSize(memories.size + 1) }}>
-                    {memories.isValidating ? 'Loading…' : 'Load more'}
-                  </Button>
-                  <span className="font-mono text-[11px] text-muted-foreground">{allMemories.length} of {totalMemories}</span>
-                </div>
-              ) : null}
+              {memories.hasMore ? <LoadMore shown={allMemories.length} total={memories.total} busy={memories.busy} onClick={memories.loadMore} /> : null}
             </Section>
           ) : null}
 
           {view === 'Projects' ? (
-            <Section error={projects.error} loading={projects.isLoading && !projects.data} retry={() => { void projects.mutate() }} skeleton={<CardsSkeleton />}>
+            <Section error={projects.error} loading={projects.loading} retry={() => { void projects.refresh() }} skeleton={<CardsSkeleton />}>
               <ProjectList items={shownProjects} query={activeQuery} refresh={refresh} />
+              {projects.hasMore ? <LoadMore shown={allProjects.length} total={projects.total} busy={projects.busy} onClick={projects.loadMore} /> : null}
             </Section>
           ) : null}
 
           {view === 'Sessions' ? (
-            <Section error={sessions.error} loading={sessions.isLoading && !sessions.data} retry={() => { void sessions.mutate() }} skeleton={<RowsSkeleton />}>
+            <Section error={sessions.error} loading={sessions.loading} retry={() => { void sessions.refresh() }} skeleton={<RowsSkeleton />}>
               <SessionList items={shownSessions} query={activeQuery} />
+              {sessions.hasMore ? <LoadMore shown={allSessions.length} total={sessions.total} busy={sessions.busy} onClick={sessions.loadMore} /> : null}
             </Section>
           ) : null}
 
           {view === 'Handoffs' ? (
-            <Section error={handoffs.error} loading={handoffs.isLoading && !handoffs.data} retry={() => { void handoffs.mutate() }} skeleton={<CardsSkeleton />}>
+            <Section error={handoffs.error} loading={handoffs.loading} retry={() => { void handoffs.refresh() }} skeleton={<CardsSkeleton />}>
               <HandoffList items={shownHandoffs} query={activeQuery} refresh={refresh} />
+              {handoffs.hasMore ? <LoadMore shown={allHandoffs.length} total={handoffs.total} busy={handoffs.busy} onClick={handoffs.loadMore} /> : null}
             </Section>
           ) : null}
 
           {view === 'Agents' ? (
             <>
-              <Section error={agents.error} loading={agents.isLoading && !agents.data} retry={() => { void agents.mutate() }} skeleton={<RowsSkeleton />}>
+              <Section error={agents.error} loading={agents.loading} retry={() => { void agents.refresh() }} skeleton={<RowsSkeleton />}>
                 <AgentList items={shownAgents} query={activeQuery} refresh={refresh} />
+              {agents.hasMore ? <LoadMore shown={allAgents.length} total={agents.total} busy={agents.busy} onClick={agents.loadMore} /> : null}
               </Section>
               <section className="flex flex-col gap-4">
                 <div>

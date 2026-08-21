@@ -7,6 +7,3 @@ export const sessionCreateSchema = z.object({
   metadata: z.record(z.string(), z.string().max(500)).default({}),
 }).strict()
 
-export const sessionListSchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(30),
-}).strict()

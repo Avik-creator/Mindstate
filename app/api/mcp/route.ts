@@ -55,7 +55,7 @@ const mcp = createMcpHandler((server) => {
   server.registerTool('list_sessions', {
     title: 'List sessions', description: 'List live, stale, and completed sessions.', inputSchema: z.object({ limit: z.number().int().min(1).max(100).default(30) }).strict(),
   }, async ({ limit }) => {
-    const data = await sessionService.list(actor('session:read'), limit)
+    const { data } = await sessionService.listPage(actor('session:read'), { limit })
     return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { sessions: data } }
   })
 
@@ -76,7 +76,7 @@ const mcp = createMcpHandler((server) => {
   })
 
   server.registerTool('list_projects', { title: 'List projects', description: 'List projects with live related-record counts.', inputSchema: z.object({}).strict() }, async () => {
-    const data = await workspaceService.listProjects(actor('project:read'))
+    const { data } = await workspaceService.listProjects(actor('project:read'))
     return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { projects: data } }
   })
   server.registerTool('create_project', { title: 'Create project', description: 'Create an owner-scoped project.', inputSchema: projectInputSchema }, async (input) => {
@@ -84,7 +84,7 @@ const mcp = createMcpHandler((server) => {
     return { content: [{ type: 'text', text: `Created project ${data.id}` }], structuredContent: { project: data } }
   })
   server.registerTool('list_handoffs', { title: 'List handoffs', description: 'List durable agent handoffs.', inputSchema: z.object({}).strict() }, async () => {
-    const data = await workspaceService.listHandoffs(actor('handoff:read'))
+    const { data } = await workspaceService.listHandoffs(actor('handoff:read'))
     return { content: [{ type: 'text', text: JSON.stringify(data) }], structuredContent: { handoffs: data } }
   })
   server.registerTool('create_handoff', { title: 'Create handoff', description: 'Create a durable handoff with optional project and session context.', inputSchema: handoffInputSchema }, async (input) => {

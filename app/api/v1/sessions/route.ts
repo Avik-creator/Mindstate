@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server'
 import { sessionService } from '@/lib/application/container'
-import { sessionCreateSchema, sessionListSchema } from '@/lib/application/session-schema'
-import { validationError } from '@/lib/application/contracts'
+import { sessionCreateSchema } from '@/lib/application/session-schema'
+import { pageQuerySchema, validationError } from '@/lib/application/contracts'
 import { apiGuard } from '@/lib/dal/api-guard'
 
 export async function GET(request: Request) {
   const { actor, response } = await apiGuard(request, 'session:read')
   if (!actor) return response
-  const url = new URL(request.url)
-  const parsed = sessionListSchema.safeParse({ limit: url.searchParams.get('limit') ?? undefined })
+  const parsed = pageQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
-  return NextResponse.json({ data: await sessionService.list(actor, parsed.data.limit) })
+  return NextResponse.json(await sessionService.listPage(actor, parsed.data))
 }
 
 export async function POST(request: Request) {
