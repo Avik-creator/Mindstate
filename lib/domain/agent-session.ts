@@ -1,5 +1,8 @@
 import type { Actor } from '@/lib/domain/memory'
 
+// A session with no heartbeat inside this window reads as stale rather than live.
+export const SESSION_STALE_AFTER_MS = 90_000
+
 export type SessionStatus = 'active' | 'completed'
 export type SessionPresence = 'live' | 'stale' | 'completed'
 
