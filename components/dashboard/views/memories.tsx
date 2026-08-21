@@ -1,0 +1,33 @@
+import { Badge } from '@/components/ui/badge'
+import { relativeTime } from '@/components/dashboard/api'
+import { Empty, NoMatches } from '@/components/dashboard/states'
+import type { Memory } from '@/components/dashboard/types'
+
+export function MemoryList({ items, query }: { items: Memory[]; query?: string }) {
+  if (!items.length) return query ? <NoMatches label="memories" query={query} /> : <Empty label="memories" />
+
+  return (
+    <section className="overflow-hidden rounded-lg border bg-card">
+      {items.map((memory) => (
+        <article key={memory.id} className="border-b p-5 last:border-b-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-medium">{memory.title}</h3>
+            <Badge variant="outline" className="capitalize">{memory.type}</Badge>
+          </div>
+          <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{memory.content}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-muted-foreground">
+            <span>{memory.source}</span>
+            <span aria-hidden="true">·</span>
+            <span>{relativeTime(memory.updatedAt)}</span>
+            {memory.tags.length ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="truncate">{memory.tags.map((tag) => `#${tag}`).join(' ')}</span>
+              </>
+            ) : null}
+          </div>
+        </article>
+      ))}
+    </section>
+  )
+}

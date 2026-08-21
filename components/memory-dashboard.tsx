@@ -1,100 +1,218 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import useSWR from 'swr'
-import { Activity, ArrowUpRight, Bot, Braces, Check, CircleDot, FileText, Folder, Layers3, LogOut, Menu, Plus, Search } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
+import { useEffect, useMemo, useState } from 'react'
+import useSWR, { type SWRResponse } from 'swr'
+import { Menu, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Empty as EmptyState, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Textarea } from '@/components/ui/textarea'
-import { authClient } from '@/lib/auth-client'
-import { AgentAccessPanel } from '@/components/agent-access-panel'
+import { CreateDialog, type CreateKind } from '@/components/dashboard/create-dialog'
+import { Sidebar } from '@/components/dashboard/sidebar'
+import { fetcher } from '@/components/dashboard/api'
+import { CardsSkeleton, LoadError, RowsSkeleton } from '@/components/dashboard/states'
+import { AgentList } from '@/components/dashboard/views/agents'
+import { HandoffList } from '@/components/dashboard/views/handoffs'
+import { MemoryList } from '@/components/dashboard/views/memories'
+import { Overview } from '@/components/dashboard/views/overview'
+import { ProjectList } from '@/components/dashboard/views/projects'
+import { SessionList } from '@/components/dashboard/views/sessions'
+import type { Agent, Handoff, Memory, Project, Session, Summary, View } from '@/components/dashboard/types'
 
-type View = 'Overview' | 'Memories' | 'Projects' | 'Sessions' | 'Handoffs' | 'Agents'
-type Memory = { id: string; title: string; content: string; type: 'decision' | 'context' | 'preference' | 'handoff'; projectId: string | null; tags: string[]; source: string; updatedAt: string }
-type Project = { id: string; name: string; description: string; memoryCount: number; sessionCount: number; handoffCount: number; updatedAt: string }
-type Session = { id: string; title: string; agent: string; presence: 'live' | 'stale' | 'completed'; memoryCount: number; lastHeartbeatAt: string }
-type Handoff = { id: string; title: string; summary: string; status: 'open' | 'closed'; projectId: string | null; nextSteps: string[]; updatedAt: string }
-type Agent = { id: string; name: string; status: string; category: string; runtimeName: string | null; capabilities: string[]; confidence: string; lastSeenAt: string | null }
-type Summary = { memories: number; projects: number; agents: number; openHandoffs: number; sessions: { live: number; stale: number; completed: number } }
+// Views the search box filters on the server; the rest filter what is already loaded.
+const SERVER_SEARCH: View[] = ['Overview', 'Memories']
 
-const fetcher = async <T,>(url: string): Promise<T> => { const response = await fetch(url); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? 'Could not load workspace'); return body as T }
-async function send(url: string, method: string, data?: unknown) { const response = await fetch(url, { method, headers: { 'content-type': 'application/json' }, body: data ? JSON.stringify(data) : undefined }); const body = await response.json(); if (!response.ok) throw new Error(body.error?.message ?? 'Request failed'); return body }
-
-const nav: Array<{ label: View; icon: typeof Layers3 }> = [
-  { label: 'Overview', icon: Layers3 }, { label: 'Memories', icon: FileText }, { label: 'Projects', icon: Folder },
-  { label: 'Sessions', icon: Activity }, { label: 'Handoffs', icon: ArrowUpRight }, { label: 'Agents', icon: Bot },
-]
-
-function Brand() { return <div className="flex items-center gap-3 px-3"><div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground"><Braces className="size-4" /></div><div><div className="text-sm font-semibold">Mindstate</div><div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">private memory</div></div></div> }
-
-function Sidebar({ user, view, setView, summary, projects }: { user: { name: string; email: string }; view: View; setView: (v: View) => void; summary?: Summary; projects: Project[] }) {
-  const counts: Partial<Record<View, number>> = { Memories: summary?.memories, Projects: summary?.projects, Sessions: summary?.sessions.live, Handoffs: summary?.openHandoffs, Agents: summary?.agents }
-  return <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground"><div className="flex h-16 items-center"><Brand /></div><div className="px-3"><Separator /></div><nav className="flex flex-col gap-1 p-3" aria-label="Primary">{nav.map(({ label, icon: Icon }) => <Button key={label} type="button" variant={view === label ? 'secondary' : 'ghost'} onClick={() => setView(label)} className="w-full justify-start"><Icon data-icon="inline-start" /><span>{label}</span>{counts[label] !== undefined ? <span className="ml-auto font-mono text-xs">{counts[label]}</span> : null}</Button>)}</nav><div className="px-6 py-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Projects</div><div className="flex flex-col gap-1 px-3">{projects.slice(0, 6).map(project => <Button key={project.id} type="button" variant="ghost" onClick={() => setView('Projects')} className="w-full justify-start text-muted-foreground"><Folder data-icon="inline-start" /><span className="truncate">{project.name}</span><span className="ml-auto font-mono text-xs">{project.memoryCount}</span></Button>)}{!projects.length ? <p className="px-3 py-2 text-xs text-muted-foreground">No projects yet</p> : null}</div><div className="mt-auto p-3"><div className="flex items-center gap-3 rounded-md border border-sidebar-border p-2"><div className="flex size-8 items-center justify-center rounded-md bg-secondary font-mono text-xs">{user.name.slice(0, 2).toUpperCase()}</div><div className="min-w-0 flex-1"><div className="truncate text-xs font-medium">{user.name}</div><div className="truncate text-[11px] text-muted-foreground">{user.email}</div></div><Button type="button" variant="ghost" size="icon-sm" aria-label="Sign out" onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = '/' } } })}><LogOut /></Button></div></div></div>
+const SEARCH_PLACEHOLDER: Record<View, string> = {
+  Overview: 'Search memories',
+  Memories: 'Search memories',
+  Projects: 'Filter projects',
+  Sessions: 'Filter sessions',
+  Handoffs: 'Filter handoffs',
+  Agents: 'Filter agents',
 }
 
-function CreateDialog({ kind, projects, done }: { kind: 'memory' | 'project' | 'handoff'; projects: Project[]; done: () => Promise<void> }) {
-  const [open, setOpen] = useState(false); const [title, setTitle] = useState(''); const [content, setContent] = useState(''); const [projectId, setProjectId] = useState(''); const [error, setError] = useState(''); const [saving, setSaving] = useState(false)
-  async function submit() { setSaving(true); setError(''); try { if (kind === 'project') await send('/api/v1/projects', 'POST', { name: title, description: content }); else if (kind === 'handoff') await send('/api/v1/handoffs', 'POST', { title, summary: content, projectId: projectId || null, sessionId: null, nextSteps: [] }); else await send('/api/v1/memories', 'POST', { title, content, type: 'context', projectId: projectId || null, sessionId: null, tags: [], source: 'manual' }); await done(); setOpen(false); setTitle(''); setContent(''); setProjectId('') } catch (e) { setError(e instanceof Error ? e.message : 'Request failed') } finally { setSaving(false) } }
-  return <Dialog open={open} onOpenChange={setOpen}><DialogTrigger render={<Button size="sm" />}><Plus data-icon="inline-start" />New {kind}</DialogTrigger><DialogContent><DialogHeader><DialogTitle>Create {kind}</DialogTitle><DialogDescription>This record is stored in your private workspace.</DialogDescription></DialogHeader><FieldGroup><Field><FieldLabel>{kind === 'project' ? 'Name' : 'Title'}</FieldLabel><Input value={title} onChange={e => setTitle(e.target.value)} /></Field><Field><FieldLabel>{kind === 'handoff' ? 'Summary' : 'Description'}</FieldLabel><Textarea value={content} onChange={e => setContent(e.target.value)} /></Field>{kind !== 'project' ? <Field><FieldLabel>Project</FieldLabel><Select value={projectId || 'none'} onValueChange={value => setProjectId(!value || value === 'none' ? '' : value)}><SelectTrigger className="w-full"><SelectValue placeholder="No project" /></SelectTrigger><SelectContent><SelectGroup><SelectItem value="none">No project</SelectItem>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectGroup></SelectContent></Select></Field> : null}{error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}</FieldGroup><DialogFooter><Button onClick={submit} disabled={saving || !title.trim() || !content.trim()}>{saving ? 'Saving…' : 'Save'}</Button></DialogFooter></DialogContent></Dialog>
+// Sessions and agents are created by enrolled agents, never by hand.
+const CREATE_KIND: Partial<Record<View, CreateKind>> = {
+  Overview: 'memory',
+  Memories: 'memory',
+  Projects: 'project',
+  Handoffs: 'handoff',
 }
 
-function Empty({ label }: { label: string }) { return <EmptyState className="min-h-48"><EmptyHeader><EmptyMedia variant="icon"><CircleDot /></EmptyMedia><EmptyTitle>No {label} yet</EmptyTitle><EmptyDescription>Create one to begin building your live workspace.</EmptyDescription></EmptyHeader></EmptyState> }
-
-export function MemoryDashboard({ user }: { user: { name: string; email: string } }) {
-  const [view, setView] = useState<View>('Overview'); const [query, setQuery] = useState('')
-  const summary = useSWR<{ data: Summary }>('/api/v1/workspace/summary', fetcher, { refreshInterval: 15000 })
-  const memories = useSWR<{ data: Memory[] }>('/api/v1/memories?limit=100', fetcher)
-  const projects = useSWR<{ data: Project[] }>('/api/v1/projects', fetcher)
-  const sessions = useSWR<{ data: Session[] }>('/api/v1/sessions?limit=100', fetcher, { refreshInterval: 15000 })
-  const handoffs = useSWR<{ data: Handoff[] }>('/api/v1/handoffs', fetcher)
-  const agents = useSWR<{ data: Agent[] }>('/api/v1/agents', fetcher, { refreshInterval: 30000 })
-  const allProjects = projects.data?.data ?? []; const allMemories = memories.data?.data ?? []; const allSessions = sessions.data?.data ?? []; const allHandoffs = handoffs.data?.data ?? []; const allAgents = agents.data?.data ?? []
-  const filteredMemories = useMemo(() => allMemories.filter(m => `${m.title} ${m.content}`.toLowerCase().includes(query.toLowerCase())), [allMemories, query])
-  async function refresh() { await Promise.all([summary.mutate(), memories.mutate(), projects.mutate(), sessions.mutate(), handoffs.mutate(), agents.mutate()]) }
-  const loading = summary.isLoading || memories.isLoading || projects.isLoading; const failure = summary.error || memories.error || projects.error
-  const liveSummary = summary.data ? { ...summary.data.data, projects: allProjects.length } : undefined
-
-  return <div className="min-h-screen bg-background text-foreground"><aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border lg:block"><Sidebar user={user} view={view} setView={setView} summary={liveSummary} projects={allProjects} /></aside><main className="min-h-screen lg:pl-60"><header className="sticky top-0 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6"><Sheet><SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}><Menu /><span className="sr-only">Open navigation</span></SheetTrigger><SheetContent side="left" className="w-60 p-0"><SheetHeader className="sr-only"><SheetTitle>Navigation</SheetTitle><SheetDescription>Workspace navigation</SheetDescription></SheetHeader><Sidebar user={user} view={view} setView={setView} summary={liveSummary} projects={allProjects} /></SheetContent></Sheet><div className="relative max-w-xl flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={e => setQuery(e.target.value)} className="h-9 pl-9" placeholder="Search workspace" /></div><CreateDialog kind={view === 'Projects' ? 'project' : view === 'Handoffs' ? 'handoff' : 'memory'} projects={allProjects} done={refresh} /></header><div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8"><div><p className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">Workspace / {view}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight">{view}</h1></div>{failure ? <Alert variant="destructive"><AlertDescription>Could not load live workspace data.</AlertDescription></Alert> : loading ? <div className="min-h-48 rounded-lg border p-8 text-sm text-muted-foreground">Loading live data…</div> : <Content view={view} summary={liveSummary!} memories={filteredMemories} projects={allProjects} sessions={allSessions} handoffs={allHandoffs} agents={allAgents} refresh={refresh} />}</div></main></div>
+function useDebounced(value: string, delay = 300) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebounced(value), delay)
+    return () => clearTimeout(timeout)
+  }, [value, delay])
+  return debounced
 }
 
-function ProjectDeleteButton({ project, refresh }: { project: Project; refresh: () => Promise<void> }) {
-  const [open, setOpen] = useState(false)
-  const [error, setError] = useState('')
-  const [deleting, setDeleting] = useState(false)
+function matches(query: string, ...fields: Array<string | null | undefined>) {
+  if (!query) return true
+  const needle = query.toLowerCase()
+  return fields.some((field) => (field ?? '').toLowerCase().includes(needle))
+}
 
-  async function remove() {
-    setDeleting(true)
-    setError('')
-    try {
-      await send(`/api/v1/projects/${project.id}`, 'DELETE')
-      await refresh()
-      setOpen(false)
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Delete failed')
-    } finally {
-      setDeleting(false)
-    }
+export function MemoryDashboard({
+  user,
+  initialView = 'Overview',
+}: {
+  user: { name: string; email: string }
+  initialView?: View
+}) {
+  const [view, setView] = useState<View>(initialView)
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounced(query)
+  const serverQuery = SERVER_SEARCH.includes(view) ? debouncedQuery.trim() : ''
+
+  function changeView(next: View) {
+    setView(next)
+    setQuery('')
+    const url = new URL(window.location.href)
+    if (next === 'Overview') url.searchParams.delete('view')
+    else url.searchParams.set('view', next.toLowerCase())
+    window.history.replaceState(null, '', url)
   }
 
-  return <div className="flex flex-col items-end gap-2"><AlertDialog open={open} onOpenChange={setOpen}><AlertDialogTrigger render={<Button variant="ghost" size="sm" />}>Delete</AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete {project.name}?</AlertDialogTitle><AlertDialogDescription>This project can only be deleted when it has no linked memories, sessions, or handoffs.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction variant="destructive" disabled={deleting} onClick={remove}>{deleting ? 'Deleting…' : 'Delete project'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>{error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}</div>
+  const summary = useSWR<{ data: Summary }>('/api/v1/workspace/summary', fetcher, { refreshInterval: 15000 })
+  const memories = useSWR<{ data: Memory[] }>(
+    `/api/v1/memories?limit=100${serverQuery ? `&q=${encodeURIComponent(serverQuery)}` : ''}`,
+    fetcher,
+    { refreshInterval: 30000, keepPreviousData: true },
+  )
+  const projects = useSWR<{ data: Project[] }>('/api/v1/projects', fetcher, { refreshInterval: 30000 })
+  const sessions = useSWR<{ data: Session[] }>('/api/v1/sessions?limit=100', fetcher, { refreshInterval: 15000 })
+  const handoffs = useSWR<{ data: Handoff[] }>('/api/v1/handoffs', fetcher, { refreshInterval: 30000 })
+  const agents = useSWR<{ data: Agent[] }>('/api/v1/agents', fetcher, { refreshInterval: 30000 })
+
+  const allProjects = projects.data?.data ?? []
+  const allMemories = memories.data?.data ?? []
+  const allSessions = sessions.data?.data ?? []
+  const allHandoffs = handoffs.data?.data ?? []
+  const allAgents = agents.data?.data ?? []
+
+  const localQuery = SERVER_SEARCH.includes(view) ? '' : debouncedQuery.trim()
+  const shownProjects = useMemo(
+    () => allProjects.filter((p) => matches(localQuery, p.name, p.description)),
+    [allProjects, localQuery],
+  )
+  const shownSessions = useMemo(
+    () => allSessions.filter((s) => matches(localQuery, s.title, s.agent, s.presence)),
+    [allSessions, localQuery],
+  )
+  const shownHandoffs = useMemo(
+    () => allHandoffs.filter((h) => matches(localQuery, h.title, h.summary, h.status)),
+    [allHandoffs, localQuery],
+  )
+  const shownAgents = useMemo(
+    () => allAgents.filter((a) => matches(localQuery, a.name, a.category, a.runtimeName)),
+    [allAgents, localQuery],
+  )
+
+  async function refresh() {
+    await Promise.all([summary.mutate(), memories.mutate(), projects.mutate(), sessions.mutate(), handoffs.mutate(), agents.mutate()])
+  }
+
+  const liveSummary = summary.data ? { ...summary.data.data, projects: allProjects.length } : undefined
+  const createKind = CREATE_KIND[view]
+  const activeQuery = debouncedQuery.trim()
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border lg:block">
+        <Sidebar user={user} view={view} setView={changeView} summary={liveSummary} projects={allProjects} />
+      </aside>
+
+      <main className="min-h-screen lg:pl-60">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
+          <Sheet>
+            <SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}>
+              <Menu />
+              <span className="sr-only">Open navigation</span>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-60 p-0">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation</SheetTitle>
+                <SheetDescription>Workspace navigation</SheetDescription>
+              </SheetHeader>
+              <Sidebar user={user} view={view} setView={changeView} summary={liveSummary} projects={allProjects} />
+            </SheetContent>
+          </Sheet>
+
+          <div className="relative min-w-0 max-w-xl flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-9 pl-9"
+              placeholder={SEARCH_PLACEHOLDER[view]}
+              aria-label={SEARCH_PLACEHOLDER[view]}
+            />
+          </div>
+
+          {createKind ? <CreateDialog kind={createKind} projects={allProjects} done={refresh} /> : null}
+        </header>
+
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace / {view}</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{view}</h1>
+          </div>
+
+          {view === 'Overview' ? (
+            <Section swr={summary} skeleton={<RowsSkeleton rows={3} />}>
+              {liveSummary ? <Overview summary={liveSummary} memories={allMemories} /> : null}
+            </Section>
+          ) : null}
+
+          {view === 'Memories' ? (
+            <Section swr={memories} skeleton={<RowsSkeleton />}>
+              <MemoryList items={allMemories} query={activeQuery} />
+            </Section>
+          ) : null}
+
+          {view === 'Projects' ? (
+            <Section swr={projects} skeleton={<CardsSkeleton />}>
+              <ProjectList items={shownProjects} query={activeQuery} refresh={refresh} />
+            </Section>
+          ) : null}
+
+          {view === 'Sessions' ? (
+            <Section swr={sessions} skeleton={<RowsSkeleton />}>
+              <SessionList items={shownSessions} query={activeQuery} />
+            </Section>
+          ) : null}
+
+          {view === 'Handoffs' ? (
+            <Section swr={handoffs} skeleton={<CardsSkeleton />}>
+              <HandoffList items={shownHandoffs} query={activeQuery} refresh={refresh} />
+            </Section>
+          ) : null}
+
+          {view === 'Agents' ? (
+            <Section swr={agents} skeleton={<RowsSkeleton />}>
+              <AgentList items={shownAgents} query={activeQuery} />
+            </Section>
+          ) : null}
+        </div>
+      </main>
+    </div>
+  )
 }
 
-function Content({ view, summary, memories, projects, sessions, handoffs, agents, refresh }: { view: View; summary: Summary; memories: Memory[]; projects: Project[]; sessions: Session[]; handoffs: Handoff[]; agents: Agent[]; refresh: () => Promise<void> }) {
-  if (view === 'Overview') return <><section className="grid border-y sm:grid-cols-2 lg:grid-cols-5">{[[summary.memories, 'Memories'], [summary.sessions.live, 'Live sessions'], [summary.projects, 'Projects'], [summary.openHandoffs, 'Open handoffs'], [summary.agents, 'Agents']].map(([n, label]) => <div key={label} className="border-r px-5 py-6 last:border-r-0"><div className="font-mono text-2xl">{n}</div><div className="text-xs text-muted-foreground">{label}</div></div>)}</section><div className="grid gap-6 lg:grid-cols-[1fr_320px]"><ListMemories items={memories.slice(0, 5)} /><div className="flex flex-col gap-6"><AgentAccessPanel /><section className="rounded-lg border p-4"><div className="flex items-center gap-2"><Check className="size-4 text-primary" /><h2 className="text-sm font-semibold">API data active</h2></div><p className="mt-2 text-xs leading-5 text-muted-foreground">Every count and record on this dashboard is owner-scoped and loaded from Neon through /api/v1.</p></section></div></div></>
-  if (view === 'Memories') return <ListMemories items={memories} />
-  if (view === 'Projects') return projects.length ? <div className="grid gap-4 md:grid-cols-2">{projects.map(p => <article key={p.id} className="rounded-lg border bg-card p-5"><div className="flex items-start justify-between"><div><h2 className="font-semibold">{p.name}</h2><p className="mt-1 text-sm text-muted-foreground">{p.description}</p></div><ProjectDeleteButton project={p} refresh={refresh} /></div><div className="mt-5 flex gap-4 font-mono text-xs text-muted-foreground"><span>{p.memoryCount} memories</span><span>{p.sessionCount} sessions</span><span>{p.handoffCount} handoffs</span></div></article>)}</div> : <Empty label="projects" />
-  if (view === 'Sessions') return sessions.length ? <div className="rounded-lg border bg-card">{sessions.map(s => <article key={s.id} className="flex items-center gap-4 border-b p-4 last:border-b-0"><span className={`size-2 rounded-full ${s.presence === 'live' ? 'bg-chart-2' : s.presence === 'stale' ? 'bg-chart-4' : 'bg-muted-foreground'}`} /><div className="flex-1"><h2 className="text-sm font-medium">{s.title}</h2><p className="text-xs text-muted-foreground">{s.agent} · {s.memoryCount} memories</p></div><Badge variant="outline">{s.presence}</Badge></article>)}</div> : <Empty label="sessions" />
-  if (view === 'Handoffs') return handoffs.length ? <div className="grid gap-4 md:grid-cols-2">{handoffs.map(h => <article key={h.id} className="rounded-lg border bg-card p-5"><div className="flex items-center justify-between"><h2 className="font-semibold">{h.title}</h2><Badge variant={h.status === 'open' ? 'default' : 'secondary'}>{h.status}</Badge></div><p className="mt-3 text-sm leading-6 text-muted-foreground">{h.summary}</p><Button className="mt-4" variant="outline" size="sm" onClick={async () => { await send(`/api/v1/handoffs/${h.id}`, 'PATCH', { status: h.status === 'open' ? 'closed' : 'open' }); await refresh() }}>{h.status === 'open' ? 'Close' : 'Reopen'}</Button></article>)}</div> : <Empty label="handoffs" />
-  return agents.length ? <div className="rounded-lg border bg-card">{agents.map(a => <article key={a.id} className="flex flex-col gap-3 border-b p-5 last:border-b-0 sm:flex-row sm:items-center"><div className="flex size-9 items-center justify-center rounded-md bg-secondary"><Bot className="size-4" /></div><div className="flex-1"><h2 className="text-sm font-medium">{a.name}</h2><p className="text-xs text-muted-foreground">{a.runtimeName ?? 'Runtime not reported'} · {a.capabilities.length} capabilities</p></div><Badge variant="outline">{a.category}</Badge><span className="font-mono text-[10px] uppercase text-muted-foreground">{a.confidence} confidence</span></article>)}</div> : <Empty label="agents" />
+// Each section owns its own loading and failure state so one dead request cannot blank the page.
+function Section<T>({
+  swr,
+  skeleton,
+  children,
+}: {
+  swr: SWRResponse<T, Error>
+  skeleton: React.ReactNode
+  children: React.ReactNode
+}) {
+  if (swr.error) {
+    return <LoadError message={swr.error.message} retry={() => { void swr.mutate() }} />
+  }
+  if (swr.isLoading && !swr.data) return <>{skeleton}</>
+  return <>{children}</>
 }
-
-function ListMemories({ items }: { items: Memory[] }) { return items.length ? <section className="overflow-hidden rounded-lg border bg-card">{items.map(m => <article key={m.id} className="border-b p-5 last:border-b-0"><div className="flex items-center gap-2"><h2 className="text-sm font-medium">{m.title}</h2><Badge variant="outline">{m.type}</Badge></div><p className="mt-2 text-sm leading-6 text-muted-foreground">{m.content}</p><div className="mt-3 font-mono text-[10px] text-muted-foreground">{m.source} · {new Date(m.updatedAt).toLocaleDateString()}</div></article>)}</section> : <Empty label="memories" /> }
