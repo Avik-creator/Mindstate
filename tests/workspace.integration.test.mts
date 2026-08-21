@@ -189,6 +189,62 @@ describe('workspace endpoints', { skip }, () => {
     await call(`/api/v1/handoffs/${handoff.body.data.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) })
   })
 
+  it('keeps a superseded memory findable while stopping it reading as current', async () => {
+    const stamp = Date.now()
+    const make = async (title: string, content: string) =>
+      (await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title, content, type: 'decision' }) })).body.data
+
+    const older = await make(`supersede probe old ${stamp}`, 'the original decision')
+    const newer = await make(`supersede probe new ${stamp}`, 'what replaced it')
+
+    try {
+      const related = await call(`/api/v1/memories/${newer.id}/relations`, {
+        method: 'POST', body: JSON.stringify({ kind: 'supersedes', targetId: older.id, note: 'changed' }),
+      })
+      assert.equal(related.status, 201)
+
+      // Flagged, never hidden: losing the old decision is losing why it changed.
+      const found = await call(`/api/v1/memories?q=supersede+probe&limit=20`)
+      const stale = found.body.data.find((m: { id: string }) => m.id === older.id)
+      assert.ok(stale, 'a superseded memory must remain searchable')
+      assert.equal(stale.standing.supersededBy[0].id, newer.id)
+
+      const briefing = await call('/api/v1/workspace/briefing?limit=100')
+      assert.equal(briefing.status, 200)
+      assert.ok(
+        !briefing.body.data.decisions.some((m: { id: string }) => m.id === older.id),
+        'a superseded memory must not be presented as a current decision',
+      )
+      assert.ok(
+        briefing.body.data.superseded.some((m: { id: string }) => m.id === older.id),
+        'it should still be listed as superseded',
+      )
+    } finally {
+      await call(`/api/v1/memories/${older.id}`, { method: 'DELETE' })
+      await call(`/api/v1/memories/${newer.id}`, { method: 'DELETE' })
+    }
+  })
+
+  it('refuses relationships that would make nonsense of standing', async () => {
+    const make = async (title: string) =>
+      (await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title, content: 'x', type: 'decision' }) })).body.data
+    const a = await make(`relation guard a ${Date.now()}`)
+    const b = await make(`relation guard b ${Date.now()}`)
+    const relate = (from: string, body: unknown) => call(`/api/v1/memories/${from}/relations`, { method: 'POST', body: JSON.stringify(body) })
+
+    try {
+      assert.equal((await relate(a.id, { kind: 'supersedes', targetId: a.id })).status, 400, 'a memory cannot supersede itself')
+      assert.equal((await relate(a.id, { kind: 'supersedes', targetId: '00000000-0000-4000-8000-000000000000' })).status, 404)
+      assert.equal((await relate(a.id, { kind: 'supersedes', targetId: b.id })).status, 201)
+      assert.equal((await relate(a.id, { kind: 'supersedes', targetId: b.id })).status, 409, 'duplicates should be refused')
+      // Both superseding each other would leave neither current.
+      assert.equal((await relate(b.id, { kind: 'supersedes', targetId: a.id })).status, 409)
+    } finally {
+      await call(`/api/v1/memories/${a.id}`, { method: 'DELETE' })
+      await call(`/api/v1/memories/${b.id}`, { method: 'DELETE' })
+    }
+  })
+
   it('closes the maintenance route when no cron secret is configured', async () => {
     const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
     // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.

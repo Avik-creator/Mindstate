@@ -78,6 +78,8 @@ Connect to `/api/mcp` with the same bearer key. Available tools:
 - `save_memory` — write durable context when the key has `memory:write`.
 - `get_context` — retrieve recent owner-scoped context for a project or session.
 - `start_session`, `list_sessions`, `heartbeat_session`, `complete_session` — manage real session presence with `session:read`/`session:write`.
+- `get_briefing` — start here. Returns current decisions and preferences, open handoffs, and unresolved contradictions for a project, with superseded memories excluded from the current set and listed separately. Prefer it over guessing search terms at the start of a session.
+- `relate_memories` — record that one memory supersedes or contradicts another. Supersede when something replaced an earlier decision; the older memory is kept and stays searchable, it simply stops being presented as current. Use `contradicts` when both may be true or neither clearly wins, and resolve it with a human rather than picking a side.
 - `list_projects`, `create_project` — discover or create project scopes using live database data (`project:read` / `project:write`).
 - `claim_handoff`, `release_handoff` — take exclusive ownership of open work before starting it, so two agents do not repeat the same task. Claiming needs a live session and that session is the lease: keep heartbeating to hold the work, and it returns to the pool automatically if you stop. A `409` means someone else holds it; pick different work rather than retrying.
 - `list_handoffs`, `create_handoff` — read and create structured handoffs instead of encoding them as mock memory.

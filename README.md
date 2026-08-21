@@ -213,6 +213,9 @@ Owner endpoints require a browser session and reject agent keys, so a key can ne
 | `/api/v1/agents/bootstrap` | `POST` | Public, one-time enrollment token. |
 | `/api/v1/memories` | `GET` `POST` | `memory:read` / `memory:write` |
 | `/api/v1/memories/{id}` | `GET` `PATCH` `DELETE` | `memory:read` / `memory:write` |
+| `/api/v1/memories/{id}/relations` | `POST` | `memory:write` |
+| `/api/v1/memories/{id}/relations/{relationId}` | `DELETE` | `memory:write` |
+| `/api/v1/workspace/briefing` | `GET` | `memory:read` |
 | `/api/v1/projects` | `GET` `POST` | `project:read` / `project:write` |
 | `/api/v1/projects/{id}` | `PATCH` `DELETE` | `project:write` |
 | `/api/v1/handoffs` | `GET` `POST` | `handoff:read` / `handoff:write` |
@@ -252,6 +255,45 @@ Each agent credential is issued an explicit set. Owner browser sessions are unsc
 Credentialled API and MCP traffic is capped at 120 requests per minute per credential, answered with `429` and a `Retry-After` header. Owner browser sessions are not counted against that quota. Authentication endpoints carry their own limits. Both stores live in Postgres, so a limit bounds the deployment rather than one warm serverless instance.
 
 Setting `CRON_SECRET` enables a daily maintenance run that removes expired unclaimed workspace claims, spent enrollment tokens, and elapsed rate-limit windows. It never touches memories, sessions, projects, or handoffs, and it keeps completed claim records, because those are what prevent a claimed workspace from being reset.
+
+## Superseded and contradicted memory
+
+The failure mode of long-lived memory is not forgetting, it is remembering something that stopped
+being true. A decision recorded in March is still returned confidently in August after it changed.
+
+A memory can therefore be recorded as superseding or contradicting another:
+
+```bash
+curl -X POST https://YOUR_DOMAIN/api/v1/memories/NEWER_ID/relations \
+  -H 'Authorization: Bearer YOUR_AGENT_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"kind":"supersedes","targetId":"OLDER_ID","note":"migrated in August"}'
+```
+
+**Superseded memories are never deleted and never hidden.** They stay searchable and carry a flag
+naming what replaced them, because losing the old decision means losing why it changed. What
+supersession changes is presentation: a stale memory stops being offered as current.
+
+`contradicts` is for when two memories disagree and neither clearly wins. Both stay current and
+both are flagged, because silently picking a winner is how a wrong answer becomes permanent.
+Relationships can be removed if recorded in error; removing one leaves both memories untouched.
+
+The API refuses relationships that would make nonsense of this: a memory cannot supersede itself,
+the same pair cannot be recorded twice, and two memories cannot supersede each other, which would
+leave neither current.
+
+## Briefings
+
+`get_briefing` over MCP, or `GET /api/v1/workspace/briefing`, answers "what should I know before
+touching this project" rather than making an agent guess search terms:
+
+- current decisions, preferences, and context, with superseded memories excluded
+- open handoffs, including whether each is already held by a live agent
+- unresolved contradictions, listed once rather than once per side
+- superseded memories, named separately with what replaced them
+
+Open handoffs are included only when the credential also holds `handoff:read`, so a briefing
+cannot become a way around that scope.
 
 ## Claiming work
 
