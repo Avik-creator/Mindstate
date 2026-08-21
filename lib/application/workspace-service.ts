@@ -5,6 +5,7 @@ import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infrastructure/db/postgres/schema'
+import { SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
 import type { Actor } from '@/lib/domain/memory'
 
 export const projectInputSchema = z.object({ name: z.string().trim().min(1).max(80), description: z.string().trim().max(500).default('') }).strict()
@@ -42,7 +43,7 @@ async function ownedSession(userId: string, id: string) {
 
 export const workspaceService = {
   async summary(actor: Actor) {
-    const cutoff = new Date(Date.now() - 90_000)
+    const cutoff = sql`(now() at time zone 'utc') - make_interval(secs => ${SESSION_STALE_AFTER_MS / 1000})`
     const [[memory], [project], [agent], [openHandoff], [liveSession], [staleSession], [completedSession]] = await Promise.all([
       db.select({ value: count() }).from(memories).where(eq(memories.userId, actor.userId)),
       db.select({ value: count() }).from(projects).where(eq(projects.userId, actor.userId)),
@@ -56,9 +57,9 @@ export const workspaceService = {
   },
   async listProjects(actor: Actor) {
     return db.select({ id: projects.id, name: projects.name, description: projects.description, createdAt: projects.createdAt, updatedAt: projects.updatedAt,
-      memoryCount: sql<number>`(select count(*)::int from memories m where m."userId" = ${actor.userId} and m."projectId" = ${projects.id})`,
-      sessionCount: sql<number>`(select count(*)::int from agent_sessions s where s."userId" = ${actor.userId} and s."projectId" = ${projects.id})`,
-      handoffCount: sql<number>`(select count(*)::int from handoffs h where h."userId" = ${actor.userId} and h."projectId" = ${projects.id})`,
+      memoryCount: sql<number>`(select count(*)::int from memories m where m."userId" = ${actor.userId} and m."projectId" = "projects"."id")`,
+      sessionCount: sql<number>`(select count(*)::int from agent_sessions s where s."userId" = ${actor.userId} and s."projectId" = "projects"."id")`,
+      handoffCount: sql<number>`(select count(*)::int from handoffs h where h."userId" = ${actor.userId} and h."projectId" = "projects"."id")`,
     }).from(projects).where(eq(projects.userId, actor.userId)).orderBy(desc(projects.updatedAt))
   },
   async createProject(actor: Actor, input: z.infer<typeof projectInputSchema>) { const [row] = await db.insert(projects).values({ id: randomUUID(), userId: actor.userId, ...input }).returning(); return row },

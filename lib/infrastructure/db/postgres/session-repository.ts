@@ -5,14 +5,12 @@ import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
 import { agentSessions, memories } from './schema'
 import type { Actor } from '@/lib/domain/memory'
-import type { AgentSessionRecord, AgentSessionRepository, CreateSessionInput, SessionPresence } from '@/lib/domain/agent-session'
-
-const LIVE_TTL_MS = 90_000
+import { SESSION_STALE_AFTER_MS, type AgentSessionRecord, type AgentSessionRepository, type CreateSessionInput, type SessionPresence } from '@/lib/domain/agent-session'
 
 type Row = typeof agentSessions.$inferSelect
 function presence(row: Row): SessionPresence {
   if (row.status === 'completed') return 'completed'
-  return Date.now() - row.lastHeartbeatAt.getTime() <= LIVE_TTL_MS ? 'live' : 'stale'
+  return Date.now() - row.lastHeartbeatAt.getTime() <= SESSION_STALE_AFTER_MS ? 'live' : 'stale'
 }
 function record(row: Row, memoryCount = 0): AgentSessionRecord {
   return { ...row, status: row.status as 'active' | 'completed', presence: presence(row), metadata: row.metadata ?? {}, memoryCount }
