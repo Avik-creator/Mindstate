@@ -130,13 +130,13 @@ export function MemoryDashboard({
   const activeQuery = debouncedQuery.trim()
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-sidebar-border lg:block">
+    <div className="dot-grid-bg min-h-screen bg-background text-foreground">
+      <aside className="fixed inset-y-0 left-0 hidden w-60 border-r-2 border-foreground bg-sidebar lg:block">
         <Sidebar user={user} view={view} setView={changeView} summary={liveSummary} projects={allProjects} />
       </aside>
 
       <main className="min-h-screen lg:pl-60">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b-2 border-foreground bg-background/95 px-4 backdrop-blur md:px-6">
           <Sheet>
             <SheetTrigger render={<Button variant="outline" size="icon" className="lg:hidden" />}>
               <Menu />
@@ -166,9 +166,12 @@ export function MemoryDashboard({
         </header>
 
         <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Workspace / {view}</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{view}</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="font-pixel text-3xl uppercase tracking-tight sm:text-4xl">{view}</h1>
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {`// WORKSPACE`}
+            </span>
           </div>
 
           {view === 'Overview' ? (

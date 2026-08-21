@@ -41,7 +41,7 @@ export function HandoffList({ items, query, refresh }: { items: Handoff[]; query
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {items.map((handoff) => (
-        <article key={handoff.id} className="rounded-lg border bg-card p-5">
+        <article key={handoff.id} className="border-2 border-foreground bg-card p-5">
           <div className="flex items-start justify-between gap-3">
             <h3 className="font-semibold">{handoff.title}</h3>
             <Badge variant={handoff.status === 'open' ? 'default' : 'secondary'}>{handoff.status}</Badge>

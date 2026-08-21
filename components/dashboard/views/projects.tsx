@@ -8,7 +8,7 @@ export function ProjectList({ items, query, refresh }: { items: Project[]; query
   return (
     <div className="grid gap-4 md:grid-cols-2">
       {items.map((project) => (
-        <article key={project.id} className="rounded-lg border bg-card p-5">
+        <article key={project.id} className="border-2 border-foreground bg-card p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h3 className="font-semibold">{project.name}</h3>

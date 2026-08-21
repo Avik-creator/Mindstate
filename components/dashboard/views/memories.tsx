@@ -8,7 +8,7 @@ export function MemoryList({ items, query, refresh }: { items: Memory[]; query?:
   if (!items.length) return query ? <NoMatches label="memories" query={query} /> : <Empty label="memories" />
 
   return (
-    <section className="overflow-hidden rounded-lg border bg-card">
+    <section className="overflow-hidden border-2 border-foreground bg-card">
       {items.map((memory) => (
         <article key={memory.id} className="border-b p-5 last:border-b-0">
           <div className="flex items-start justify-between gap-3">

@@ -37,9 +37,9 @@ export function AgentAccessPanel() {
   }
 
   return (
-    <section className="rounded-lg border bg-card p-4">
+    <section className="border-2 border-foreground bg-card p-4">
       <div className="flex items-center gap-2">
-        <div className="flex size-8 items-center justify-center rounded-md bg-accent/15 text-accent"><Bot className="size-4" /></div>
+        <div className="flex size-8 items-center justify-center  bg-accent/15 text-accent"><Bot className="size-4" /></div>
         <div><h2 className="text-sm font-semibold">Agent-first access</h2><p className="text-xs text-muted-foreground">One-time enrollment</p></div>
       </div>
       <p className="mt-4 text-xs leading-5 text-muted-foreground">Issue a 15-minute token so an agent can enroll itself in your workspace without your password.</p>
@@ -50,7 +50,7 @@ export function AgentAccessPanel() {
           {loading ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <KeyRound data-icon="inline-start" />}Issue signup token
         </Button>
       </div>
-      {result ? <div className="mt-3 rounded-md bg-secondary p-3"><code className="block break-all font-mono text-[10px]">{result.token}</code><Button variant="ghost" size="sm" className="mt-2 w-full" onClick={copyToken}>{copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}{copied ? 'Copied' : 'Copy once'}</Button></div> : null}
+      {result ? <div className="mt-3  bg-secondary p-3"><code className="block break-all font-mono text-[10px]">{result.token}</code><Button variant="ghost" size="sm" className="mt-2 w-full" onClick={copyToken}>{copied ? <Check data-icon="inline-start" /> : <Copy data-icon="inline-start" />}{copied ? 'Copied' : 'Copy once'}</Button></div> : null}
       {error ? <Alert className="mt-3" variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
     </section>
   )

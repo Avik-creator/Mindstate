@@ -9,8 +9,8 @@ function PresenceDot({ presence }: { presence: Session['presence'] }) {
   if (presence === 'live') {
     return (
       <span className="relative flex size-2.5 shrink-0" aria-hidden="true">
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-chart-3 opacity-60 motion-reduce:hidden" />
-        <span className="relative inline-flex size-2.5 rounded-full bg-chart-3" />
+        <span className="absolute inline-flex size-full animate-ping bg-brand opacity-60 motion-reduce:hidden" />
+        <span className="relative inline-flex size-2.5 bg-brand" />
       </span>
     )
   }
@@ -19,7 +19,7 @@ function PresenceDot({ presence }: { presence: Session['presence'] }) {
     <span
       aria-hidden="true"
       className={cn(
-        'size-2.5 shrink-0 rounded-full',
+        'size-2.5 shrink-0 ',
         presence === 'stale' ? 'border-2 border-muted-foreground bg-transparent' : 'bg-muted-foreground/40',
       )}
     />
@@ -30,7 +30,7 @@ export function SessionList({ items, query }: { items: Session[]; query?: string
   if (!items.length) return query ? <NoMatches label="sessions" query={query} /> : <Empty label="sessions" />
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div className="overflow-hidden border-2 border-foreground bg-card">
       {items.map((session) => (
         <article key={session.id} className="flex items-center gap-4 border-b p-4 last:border-b-0">
           <PresenceDot presence={session.presence} />
