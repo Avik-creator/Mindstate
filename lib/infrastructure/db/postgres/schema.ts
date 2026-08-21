@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, customType, index, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
+import { bigint, boolean, customType, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core'
 
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' })
 
@@ -62,3 +62,15 @@ export const agentSignupTokens = pgTable('agent_signup_tokens', {
 export const apiKeys = pgTable('api_keys', {
   id: text('id').primaryKey(), userId: text('userId').notNull(), agentId: text('agentId'), name: text('name').notNull(), prefix: text('prefix').notNull(), keyHash: text('keyHash').notNull().unique(), scopes: jsonb('scopes').$type<string[]>().notNull().default(['memory:read']), lastUsedAt: timestamp('lastUsedAt', { withTimezone: true }), revokedAt: timestamp('revokedAt', { withTimezone: true }), createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index('api_keys_user_idx').on(t.userId), index('api_keys_agent_idx').on(t.userId, t.agentId)])
+
+// Better Auth's own rate-limit store. Database-backed so limits bound the deployment, not one warm instance.
+export const rateLimit = pgTable('rateLimit', {
+  id: text('id').primaryKey(), key: text('key').notNull(), count: integer('count').notNull().default(0),
+  lastRequest: bigint('lastRequest', { mode: 'number' }).notNull(),
+}, (t) => [uniqueIndex('rateLimit_key_uidx').on(t.key)])
+
+// Fixed-window quota for credentialled API traffic, keyed per credential per window.
+export const apiRateLimits = pgTable('api_rate_limits', {
+  key: text('key').primaryKey(), count: integer('count').notNull().default(0),
+  expiresAt: timestamp('expiresAt', { withTimezone: true }).notNull(),
+}, (t) => [index('api_rate_limits_expiry_idx').on(t.expiresAt)])

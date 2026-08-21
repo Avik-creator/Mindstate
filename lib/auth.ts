@@ -24,9 +24,9 @@ export const auth = betterAuth({
     ...(process.env.NODE_ENV === 'development' ? developmentOrigins.filter((value): value is string => Boolean(value)) : []),
   ],
   session: { expiresIn: 60 * 60 * 24 * 7, updateAge: 60 * 60 * 24 },
-  // In-memory buckets, so limits are per serverless instance rather than global.
   rateLimit: {
     enabled: true,
+    storage: 'database',
     window: 60,
     max: 100,
     customRules: {
