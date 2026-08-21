@@ -41,7 +41,7 @@ Content-Type: application/json
 
 Send `Authorization: Bearer <api-key>` and `Content-Type: application/json`.
 
-- `GET /api/v1/memories?q=<query>&limit=20` — search memory.
+- `GET /api/v1/memories?q=<query>&limit=20&offset=0` — search memory. The response carries a `page` object with `limit`, `offset`, and `total`; page with `offset`.
 - `POST /api/v1/memories` — capture memory.
 - `GET|PATCH|DELETE /api/v1/memories/<uuid>` — read, update, or remove memory.
 
@@ -57,7 +57,7 @@ Send `Authorization: Bearer <api-key>` and `Content-Type: application/json`.
 }
 ```
 
-Validation failures use `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "issues": [...] } }`. Correct the named fields; do not blindly retry. Respect `memory:read` and `memory:write` scopes and treat `403` as a hard authorization boundary.
+Validation failures use `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "issues": [...] } }`. Correct the named fields; do not blindly retry. Respect the scopes the key was issued and treat `403` as a hard authorization boundary. Memory routes need `memory:read` or `memory:write`; projects, handoffs, and telemetry need `project:*`, `handoff:*`, and `agent:write` respectively.
 
 ## Live session lifecycle
 
@@ -78,7 +78,7 @@ Connect to `/api/mcp` with the same bearer key. Available tools:
 - `save_memory` — write durable context when the key has `memory:write`.
 - `get_context` — retrieve recent owner-scoped context for a project or session.
 - `start_session`, `list_sessions`, `heartbeat_session`, `complete_session` — manage real session presence with `session:read`/`session:write`.
-- `list_projects`, `create_project` — discover or create project scopes using live database data.
+- `list_projects`, `create_project` — discover or create project scopes using live database data (`project:read` / `project:write`).
 - `list_handoffs`, `create_handoff` — read and create structured handoffs instead of encoding them as mock memory.
 - `report_agent_context` — report sanitized runtime, capability, and activity signals for deterministic classification.
 

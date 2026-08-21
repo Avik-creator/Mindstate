@@ -54,6 +54,7 @@ For a custom domain, set `BETTER_AUTH_URL` to its full HTTPS origin, for example
 | `DATABASE_URL` | Yes | PostgreSQL connection string used by Drizzle and Better Auth. |
 | `BETTER_AUTH_SECRET` | Yes | Random secret of at least 32 characters used to sign authentication data. |
 | `BETTER_AUTH_URL` | Production custom domains | Canonical HTTPS origin of the deployed app. Vercel deployment URLs are detected automatically. |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | No | Extra comma-separated origins allowed to call the auth endpoints. |
 
 Generate a local authentication secret with:
 
@@ -107,6 +108,26 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm db:generate` | Generate a migration from the Drizzle schema. |
 | `pnpm db:migrate` | Apply pending migrations. |
 | `pnpm db:studio` | Open Drizzle Studio. |
+| `pnpm test` | Run the test suite. |
+
+## Tests
+
+```bash
+pnpm test
+```
+
+Unit tests run with no setup. The integration tests exercise a running instance and
+skip unless all three variables are set:
+
+```bash
+MINDSTATE_TEST_URL=http://localhost:3000 \
+MINDSTATE_TEST_EMAIL=you@example.com \
+MINDSTATE_TEST_PASSWORD=your-password \
+pnpm test
+```
+
+They create and then remove their own records, so point them at a development
+database rather than production.
 
 ## Agent connection
 
@@ -143,9 +164,13 @@ Authorization: Bearer YOUR_AGENT_API_KEY
 ### 3. Use the REST API
 
 ```bash
-curl 'https://YOUR_DOMAIN/api/v1/memories?q=deployment&limit=20' \
+curl 'https://YOUR_DOMAIN/api/v1/memories?q=deployment&limit=20&offset=0' \
   -H 'Authorization: Bearer YOUR_AGENT_API_KEY'
 ```
+
+Search matches word stems and ranks titles above body text, so `deploy` finds
+`deployment`. List responses carry a `page` object with `limit`, `offset`, and
+`total`; page through with `offset` until the accumulated count reaches `total`.
 
 Create a memory:
 
@@ -172,7 +197,25 @@ Configure an MCP client to connect to:
 https://YOUR_DOMAIN/api/mcp
 ```
 
-Pass the same bearer token in the `Authorization` header. Available tools cover memory search and capture, projects, handoffs, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the complete agent integration and credential-safety guide.
+Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer
+credentials only; browser session cookies are rejected. Available tools cover memory search and capture, projects, handoffs, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the complete agent integration and credential-safety guide.
+
+## Scopes
+
+Each agent credential is issued an explicit set. Owner browser sessions are unscoped
+and hold all of them.
+
+| Scope | Grants |
+| --- | --- |
+| `memory:read` | Search and read memories. |
+| `memory:write` | Create, update, and delete memories. |
+| `session:read` | List sessions and read presence. |
+| `session:write` | Start, heartbeat, and complete sessions. |
+| `project:read` | List projects and their counts. |
+| `project:write` | Create, update, and delete projects. |
+| `handoff:read` | List handoffs. |
+| `handoff:write` | Create and update handoffs. |
+| `agent:write` | Report the agent's own runtime and capability telemetry. |
 
 ## Agent presence
 
@@ -181,7 +224,7 @@ Agents should start a session before meaningful work, send a heartbeat every 30â
 ## Security notes
 
 - Do not expose owner browser sessions or passwords to agents.
-- Give agent keys only the scopes they require.
+- Give agent keys only the scopes they require, from the vocabulary below.
 - Do not place prompts, source code, environment values, or secrets in telemetry.
 - Treat `401` and `403` responses as hard authorization failures.
 - Revoke a key immediately if it may have been exposed.
