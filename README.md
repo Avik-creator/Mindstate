@@ -216,7 +216,7 @@ Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bea
 
 Owner endpoints require a browser session and reject agent keys, so a key can never mint another credential.
 
-`projectId` and `sessionId` must name records in the same workspace. Anything else — a project belonging to someone else, or one that has been deleted — answers `400 INVALID_RELATION` rather than filing the record somewhere its owner cannot see it.
+`projectId` and `sessionId` must name records in the same workspace. Anything else — a project belonging to someone else, or one that has been deleted — answers `400 INVALID_RELATION` rather than filing the record somewhere its owner cannot see it. Composite foreign keys on `(userId, projectId)` and `(userId, sessionId)` enforce the same rule in the database, so no code path can write a reference the API would refuse.
 
 | Endpoint | Methods | Auth |
 | --- | --- | --- |
