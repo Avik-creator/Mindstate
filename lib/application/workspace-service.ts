@@ -5,6 +5,7 @@ import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infrastructure/db/postgres/schema'
+import { assertOwnedRefs } from '@/lib/infrastructure/db/postgres/owned-refs'
 import { recordAudit } from '@/lib/application/audit-service'
 import { verifyAgentIdentity } from '@/lib/domain/agent-identity'
 import { claimState } from '@/lib/domain/handoff-claim'
@@ -36,14 +37,6 @@ export function classifyAgent(values: string[]) {
   return best.score ? { category: best.category, confidence: best.score >= 3 ? 'high' : best.score === 2 ? 'medium' : 'low' } : { category: 'general', confidence: 'low' }
 }
 
-async function ownedProject(userId: string, id: string) {
-  const [row] = await db.select({ id: projects.id }).from(projects).where(and(eq(projects.userId, userId), eq(projects.id, id))).limit(1)
-  return row
-}
-async function ownedSession(userId: string, id: string) {
-  const [row] = await db.select({ id: agentSessions.id }).from(agentSessions).where(and(eq(agentSessions.userId, userId), eq(agentSessions.id, id))).limit(1)
-  return row
-}
 
 
 // True while the session holding a claim is still active and heartbeating.
@@ -143,8 +136,12 @@ export const workspaceService = {
         sql`(${handoffs.claimedBySessionId} is null or ${handoffs.claimedBySessionId} = ${sessionId} or not ${holderIsLive})`,
       ))
       .returning({ id: handoffs.id, title: handoffs.title, claimedAt: handoffs.claimedAt })
-    if (!row) return { error: 'UNAVAILABLE' as const }
-    return { handoff: row }
+    if (row) return { handoff: row }
+
+    // Without this a typo'd id is reported as work a live agent holds, sending the caller to debug an agent that was never there.
+    const [exists] = await db.select({ id: handoffs.id }).from(handoffs).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).limit(1)
+    if (exists) return { error: 'UNAVAILABLE' as const }
+    return { error: 'NOT_FOUND' as const }
   },
 
   async releaseHandoff(actor: Actor, id: string, sessionId: string) {
@@ -155,13 +152,11 @@ export const workspaceService = {
     return row ?? null
   },
   async createHandoff(actor: Actor, input: z.infer<typeof handoffInputSchema>) {
-    if (input.projectId && !(await ownedProject(actor.userId, input.projectId))) throw new Error('PROJECT_NOT_FOUND')
-    if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
+    await assertOwnedRefs(actor.userId, input)
     const [row] = await db.insert(handoffs).values({ id: randomUUID(), userId: actor.userId, ...input }).returning(); return row
   },
   async updateHandoff(actor: Actor, id: string, input: Partial<z.infer<typeof handoffInputSchema>> & { status?: 'open' | 'closed' }) {
-    if (input.projectId && !(await ownedProject(actor.userId, input.projectId))) throw new Error('PROJECT_NOT_FOUND')
-    if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
+    await assertOwnedRefs(actor.userId, input)
 
     // An agent may not change work another live agent is holding. The owner always may.
     const claimGuard = actor.credentialId

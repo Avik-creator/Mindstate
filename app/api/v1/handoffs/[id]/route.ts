@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiGuard } from '@/lib/dal/api-guard'
 import { handoffInputSchema, workspaceService } from '@/lib/application/workspace-service'
-import { validationError } from '@/lib/application/contracts'
+import { invalidRelation, ReferenceNotFoundError, validationError } from '@/lib/application/contracts'
 
 const updateSchema = handoffInputSchema.partial().extend({ status: z.enum(['open', 'closed']).optional() }).strict()
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
@@ -14,6 +14,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (error instanceof Error && error.message === 'HANDOFF_HELD') {
       return NextResponse.json({ error: { code: 'HANDOFF_HELD', message: 'Another live agent is holding this handoff.' } }, { status: 409 })
     }
-    return NextResponse.json({ error: { code: 'INVALID_RELATION', message: error instanceof Error ? error.message : 'Invalid relationship' } }, { status: 400 })
+    if (error instanceof ReferenceNotFoundError) return NextResponse.json(invalidRelation(error), { status: 400 })
+    throw error
   }
 }

@@ -3,6 +3,7 @@ import 'server-only'
 import { and, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import { db } from './client'
 import { memories } from './schema'
+import { assertOwnedRefs } from './owned-refs'
 import { recordAudit } from '@/lib/application/audit-service'
 import { toTsQuery } from '@/lib/domain/text-search'
 import type { Actor, CreateMemoryInput, MemoryRecord, MemoryRepository, MemorySearch, MemorySearchRepository } from '@/lib/domain/memory'
@@ -22,6 +23,7 @@ function conditions(actor: Actor, search: MemorySearch) {
 
 export class PostgresMemoryRepository implements MemoryRepository, MemorySearchRepository {
   async create(actor: Actor, input: CreateMemoryInput): Promise<MemoryRecord> {
+    await assertOwnedRefs(actor.userId, input)
     const [created] = await db.insert(memories).values({ id: crypto.randomUUID(), userId: actor.userId, actorType: actor.agentId ? 'agent' : 'user', actorId: actor.agentId ?? actor.userId, ...input }).returning(columns)
     return created as MemoryRecord
   }
@@ -32,6 +34,7 @@ export class PostgresMemoryRepository implements MemoryRepository, MemorySearchR
   }
 
   async update(actor: Actor, id: string, input: Partial<CreateMemoryInput>) {
+    await assertOwnedRefs(actor.userId, input)
     const [record] = await db.update(memories).set({ ...input, updatedAt: new Date() }).where(and(eq(memories.id, id), eq(memories.userId, actor.userId))).returning(columns)
     return (record as MemoryRecord | undefined) ?? null
   }

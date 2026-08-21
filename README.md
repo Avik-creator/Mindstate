@@ -216,6 +216,8 @@ Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bea
 
 Owner endpoints require a browser session and reject agent keys, so a key can never mint another credential.
 
+`projectId` and `sessionId` must name records in the same workspace. Anything else — a project belonging to someone else, or one that has been deleted — answers `400 INVALID_RELATION` rather than filing the record somewhere its owner cannot see it.
+
 | Endpoint | Methods | Auth |
 | --- | --- | --- |
 | `/api/v1` | `GET` | Public. Reports version and database reachability. |
@@ -332,6 +334,9 @@ its own work without anyone intervening.
 
 A second claim on a handoff a live agent holds answers `409`. So does an attempt to change a
 handoff another live agent is holding. The workspace owner can always act on any handoff.
+
+A claim on a handoff that does not exist in this workspace answers `404`, so a mistyped id is
+not reported as work some other agent is holding.
 
 `release` gives a claim up voluntarily and answers `409` unless the session named actually holds
 it. Over MCP the same operations are `claim_handoff` and `release_handoff`.

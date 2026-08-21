@@ -125,6 +125,7 @@ const mcp = createMcpHandler((server) => {
   }, async ({ handoffId, sessionId }) => {
     const result = await workspaceService.claimHandoff(actor('handoff:write'), handoffId, sessionId)
     if (result.error === 'SESSION_NOT_LIVE') throw new Error('Start a session and heartbeat it before claiming work')
+    if (result.error === 'NOT_FOUND') throw new Error('No such handoff')
     if (result.error === 'UNAVAILABLE') throw new Error('That handoff is closed or already held by a live agent')
     return { content: [{ type: 'text', text: `Claimed "${result.handoff.title}". Keep heartbeating ${sessionId} to hold it.` }], structuredContent: { handoff: result.handoff } }
   })

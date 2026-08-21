@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { idSchema, validationError } from '@/lib/application/contracts'
+import { idSchema, invalidRelation, ReferenceNotFoundError, validationError } from '@/lib/application/contracts'
 import { memoryService } from '@/lib/application/container'
 import { memoryPatchSchema } from '@/lib/application/memory-schema'
 import { apiGuard } from '@/lib/dal/api-guard'
@@ -26,8 +26,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!id.success) return NextResponse.json(validationError(id.error), { status: 400 })
   const parsed = memoryPatchSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
-  const data = await memoryService.update(actor, id.data, parsed.data)
-  return data ? NextResponse.json({ data }) : notFound()
+  try {
+    const data = await memoryService.update(actor, id.data, parsed.data)
+    return data ? NextResponse.json({ data }) : notFound()
+  } catch (error) {
+    if (error instanceof ReferenceNotFoundError) return NextResponse.json(invalidRelation(error), { status: 400 })
+    throw error
+  }
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {

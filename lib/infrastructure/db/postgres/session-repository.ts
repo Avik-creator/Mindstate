@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
 import { agentSessions, memories } from './schema'
+import { assertOwnedRefs } from './owned-refs'
 import type { Actor } from '@/lib/domain/memory'
 import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
 import { SESSION_STALE_AFTER_MS, type AgentSessionRecord, type AgentSessionRepository, type CreateSessionInput, type SessionPresence } from '@/lib/domain/agent-session'
@@ -19,6 +20,7 @@ function record(row: Row, memoryCount = 0): AgentSessionRecord {
 
 export class PostgresAgentSessionRepository implements AgentSessionRepository {
   async create(actor: Actor, input: CreateSessionInput) {
+    await assertOwnedRefs(actor.userId, input)
     const now = new Date()
     const [row] = await db.insert(agentSessions).values({ id: randomUUID(), userId: actor.userId, agentId: actor.agentId ?? null, title: input.title, projectId: input.projectId ?? null, agent: input.agent ?? (actor.agentId ? 'agent' : 'manual'), metadata: input.metadata ?? {}, lastHeartbeatAt: now, updatedAt: now }).returning()
     return record(row)
