@@ -199,7 +199,7 @@ Point an MCP client at:
 https://YOUR_DOMAIN/api/mcp
 ```
 
-Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer credentials only; browser session cookies are rejected. Twelve tools cover memory search and capture, projects, handoffs, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the full integration and credential-safety guide.
+Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer credentials only; browser session cookies are rejected. Fourteen tools cover memory search and capture, projects, handoffs including claiming and releasing them, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the full integration and credential-safety guide.
 
 ## API reference
 
@@ -217,6 +217,8 @@ Owner endpoints require a browser session and reject agent keys, so a key can ne
 | `/api/v1/projects/{id}` | `PATCH` `DELETE` | `project:write` |
 | `/api/v1/handoffs` | `GET` `POST` | `handoff:read` / `handoff:write` |
 | `/api/v1/handoffs/{id}` | `PATCH` | `handoff:write` |
+| `/api/v1/handoffs/{id}/claim` | `POST` | `handoff:write` |
+| `/api/v1/handoffs/{id}/release` | `POST` | `handoff:write` |
 | `/api/v1/sessions` | `GET` `POST` | `session:read` / `session:write` |
 | `/api/v1/sessions/{id}` | `GET` `DELETE` | `session:read` / `session:write` |
 | `/api/v1/sessions/{id}/heartbeat` | `POST` | `session:write` |
@@ -250,6 +252,29 @@ Each agent credential is issued an explicit set. Owner browser sessions are unsc
 Credentialled API and MCP traffic is capped at 120 requests per minute per credential, answered with `429` and a `Retry-After` header. Owner browser sessions are not counted against that quota. Authentication endpoints carry their own limits. Both stores live in Postgres, so a limit bounds the deployment rather than one warm serverless instance.
 
 Setting `CRON_SECRET` enables a daily maintenance run that removes expired unclaimed workspace claims, spent enrollment tokens, and elapsed rate-limit windows. It never touches memories, sessions, projects, or handoffs, and it keeps completed claim records, because those are what prevent a claimed workspace from being reset.
+
+## Claiming work
+
+A handoff is a work item, not just a note. An agent takes exclusive ownership of one before
+starting, so a fleet does not duplicate effort:
+
+```bash
+curl -X POST https://YOUR_DOMAIN/api/v1/handoffs/HANDOFF_ID/claim \
+  -H 'Authorization: Bearer YOUR_AGENT_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId":"YOUR_LIVE_SESSION_ID"}'
+```
+
+Claiming requires a live session, and that session is the lease. There is no timer to renew and
+no extra protocol: while an agent heartbeats, it keeps its work; when it stops, the claim expires
+and the handoff returns to the pool for another agent to take. A crashed agent therefore frees
+its own work without anyone intervening.
+
+A second claim on a handoff a live agent holds answers `409`. So does an attempt to change a
+handoff another live agent is holding. The workspace owner can always act on any handoff.
+
+`release` gives a claim up voluntarily and answers `409` unless the session named actually holds
+it. Over MCP the same operations are `claim_handoff` and `release_handoff`.
 
 ## Agent presence
 

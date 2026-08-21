@@ -79,6 +79,7 @@ Connect to `/api/mcp` with the same bearer key. Available tools:
 - `get_context` — retrieve recent owner-scoped context for a project or session.
 - `start_session`, `list_sessions`, `heartbeat_session`, `complete_session` — manage real session presence with `session:read`/`session:write`.
 - `list_projects`, `create_project` — discover or create project scopes using live database data (`project:read` / `project:write`).
+- `claim_handoff`, `release_handoff` — take exclusive ownership of open work before starting it, so two agents do not repeat the same task. Claiming needs a live session and that session is the lease: keep heartbeating to hold the work, and it returns to the pool automatically if you stop. A `409` means someone else holds it; pick different work rather than retrying.
 - `list_handoffs`, `create_handoff` — read and create structured handoffs instead of encoding them as mock memory.
 - `report_agent_context` — report sanitized runtime, capability, and activity signals for deterministic classification.
 
