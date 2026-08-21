@@ -136,8 +136,12 @@ export const workspaceService = {
         sql`(${handoffs.claimedBySessionId} is null or ${handoffs.claimedBySessionId} = ${sessionId} or not ${holderIsLive})`,
       ))
       .returning({ id: handoffs.id, title: handoffs.title, claimedAt: handoffs.claimedAt })
-    if (!row) return { error: 'UNAVAILABLE' as const }
-    return { handoff: row }
+    if (row) return { handoff: row }
+
+    // Without this a typo'd id is reported as work a live agent holds, sending the caller to debug an agent that was never there.
+    const [exists] = await db.select({ id: handoffs.id }).from(handoffs).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).limit(1)
+    if (exists) return { error: 'UNAVAILABLE' as const }
+    return { error: 'NOT_FOUND' as const }
   },
 
   async releaseHandoff(actor: Actor, id: string, sessionId: string) {

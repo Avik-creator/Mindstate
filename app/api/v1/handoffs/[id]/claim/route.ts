@@ -20,6 +20,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (result.error === 'SESSION_NOT_LIVE') {
     return NextResponse.json({ error: { code: 'SESSION_NOT_LIVE', message: 'Start a session and heartbeat it before claiming work.' } }, { status: 409 })
   }
+  if (result.error === 'NOT_FOUND') {
+    return NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Handoff not found' } }, { status: 404 })
+  }
   if (result.error === 'UNAVAILABLE') {
     return NextResponse.json({ error: { code: 'UNAVAILABLE', message: 'This handoff is closed or already held by a live agent.' } }, { status: 409 })
   }
