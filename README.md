@@ -4,6 +4,8 @@ Private, durable memory for AI agents. Mindstate gives coding, research, browser
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FAvik-creator%2FMindstate&project-name=mindstate&repository-name=mindstate&env=DATABASE_URL%2CBETTER_AUTH_SECRET&envDescription=DATABASE_URL%20is%20a%20PostgreSQL%20connection%20string.%20BETTER_AUTH_SECRET%20must%20be%20a%20random%20value%20of%20at%20least%2032%20characters.)
 
+[![CI](https://github.com/Avik-creator/Mindstate/actions/workflows/ci.yml/badge.svg)](https://github.com/Avik-creator/Mindstate/actions/workflows/ci.yml)
+
 [Live app](https://mindstate.avikmukherjee.com) · [Agent guide](https://mindstate.avikmukherjee.com/skill.md)
 
 ## What Mindstate provides
@@ -92,6 +94,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `pnpm dev` | Start the development server. |
 | `pnpm build` | Create a production build and run type validation. |
 | `pnpm start` | Run the production server. |
+| `pnpm typecheck` | Typecheck the app and the tests. |
 | `pnpm test` | Run the test suite. |
 | `pnpm db:generate` | Generate a migration from the Drizzle schema. |
 | `pnpm db:migrate` | Apply pending migrations. |
@@ -113,6 +116,14 @@ pnpm test
 ```
 
 They create and then clean up their own records, so point them at a development database rather than production. One exception: the revocation test leaves a revoked agent behind, because revocation is deliberately not deletion and there is no endpoint to remove one.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`.
+
+The `types and migrations` job typechecks the app and the tests, then runs `drizzle-kit generate` and fails if it produces anything — a schema edit without a matching migration would otherwise deploy code its database cannot serve.
+
+The `tests against a real database` job starts an empty PostgreSQL 17, applies every migration to it from nothing, builds, starts the server, creates an account, and runs the full suite including the integration half. Migrating from empty is deliberate: it proves the migrations still describe the whole schema rather than only the last few changes. The job fails if the integration suite does not report a pass, because that suite skips silently when it is misconfigured and would otherwise leave CI green having tested nothing.
 
 ## Database migrations
 
@@ -372,7 +383,7 @@ SKILL.md                     Agent integration instructions
 2. Keep database changes in the Drizzle schema and generate a migration; do not hand-write schema SQL.
 3. Preserve owner scoping on every read and mutation.
 4. Route new API endpoints through `apiGuard` so authentication, scope, and quota cannot be skipped.
-5. Run `pnpm build` and `pnpm test` before opening a pull request.
+5. Run `pnpm typecheck`, `pnpm build`, and `pnpm test` before opening a pull request. CI runs all three, plus the migrations, against a fresh database.
 
 ## License
 
