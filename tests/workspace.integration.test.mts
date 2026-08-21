@@ -219,6 +219,19 @@ describe('workspace endpoints', { skip }, () => {
     }
   })
 
+  it('refuses to delete a project that still holds records', async () => {
+    // The composite foreign key depends on this staying true; without it the delete would be a 500.
+    const project = await call('/api/v1/projects', { method: 'POST', body: JSON.stringify({ name: `delete guard ${Date.now()}`, description: '' }) })
+    const projectId = project.body.data.id
+    const memory = await call('/api/v1/memories', { method: 'POST', body: JSON.stringify({ title: 'holds the project', content: 'c', projectId }) })
+
+    const blocked = await call(`/api/v1/projects/${projectId}`, { method: 'DELETE' })
+    assert.equal(blocked.status, 409, 'a project still holding records must not be deletable')
+
+    await call(`/api/v1/memories/${memory.body.data.id}`, { method: 'DELETE' })
+    assert.equal((await call(`/api/v1/projects/${projectId}`, { method: 'DELETE' })).status, 200, 'and must be deletable once emptied')
+  })
+
   it('reports a handoff that does not exist as missing, not as work someone holds', async () => {
     const session = await call('/api/v1/sessions', { method: 'POST', body: JSON.stringify({ title: 'missing handoff probe' }) })
     const sessionId = session.body.data.id
