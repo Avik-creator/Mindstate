@@ -3,6 +3,8 @@ import { describe, it } from 'node:test'
 import { clientAddress } from '../lib/dal/client-address.ts'
 import { can, LEGACY_SCOPE_EXPANSION, SCOPES } from '../lib/domain/scopes.ts'
 import { toTsQuery } from '../lib/domain/text-search.ts'
+import { verifyAgentIdentity } from '../lib/domain/agent-identity.ts'
+import { normalizePage, MAX_LIMIT } from '../lib/domain/pagination.ts'
 
 function request(headers: Record<string, string>) {
   return new Request('https://example.test/api/v1/workspace-claims', { headers })
@@ -74,5 +76,43 @@ describe('legacy scope expansion', () => {
     for (const scope of ['project:read', 'project:write', 'handoff:read', 'handoff:write', 'agent:write']) {
       assert.ok(migrated.has(scope), `${scope} would be lost by the migration`)
     }
+  })
+})
+
+describe('verifyAgentIdentity', () => {
+  it('corroborates a declaration that matches the transport', () => {
+    const result = verifyAgentIdentity({ declaredRuntime: 'claude code', observedUserAgent: 'claude-code/1.4.2', observedRequests: 4 })
+    assert.equal(result.status, 'consistent')
+  })
+
+  it('flags a declaration the transport contradicts', () => {
+    const result = verifyAgentIdentity({ declaredRuntime: 'claude code', observedUserAgent: 'python-requests/2.31', observedRequests: 4 })
+    assert.equal(result.status, 'inconsistent')
+    assert.match(result.reason, /python-requests/)
+  })
+
+  it('claims nothing when there is nothing to compare', () => {
+    assert.equal(verifyAgentIdentity({ declaredRuntime: 'claude code', observedUserAgent: 'claude-code/1', observedRequests: 0 }).status, 'unverified')
+    assert.equal(verifyAgentIdentity({ declaredRuntime: null, observedUserAgent: 'claude-code/1', observedRequests: 3 }).status, 'unverified')
+    assert.equal(verifyAgentIdentity({ declaredRuntime: 'claude code', observedUserAgent: null, observedRequests: 3 }).status, 'unverified')
+  })
+
+  it('ignores short tokens that would match almost anything', () => {
+    // "go" would otherwise match inside "google", "mongo", and so on.
+    assert.equal(verifyAgentIdentity({ declaredRuntime: 'go', observedUserAgent: 'mongo-driver/1', observedRequests: 2 }).status, 'unverified')
+  })
+})
+
+describe('normalizePage', () => {
+  it('bounds the limit and refuses a negative offset', () => {
+    assert.equal(normalizePage({ limit: 5000 }).limit, MAX_LIMIT)
+    assert.equal(normalizePage({ limit: 0 }).limit, 1)
+    assert.equal(normalizePage({ offset: -10 }).offset, 0)
+  })
+
+  it('applies a default when nothing is asked for', () => {
+    const page = normalizePage()
+    assert.ok(page.limit > 0 && page.limit <= MAX_LIMIT)
+    assert.equal(page.offset, 0)
   })
 })

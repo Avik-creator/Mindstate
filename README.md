@@ -112,7 +112,7 @@ MINDSTATE_TEST_PASSWORD=your-password \
 pnpm test
 ```
 
-They create and then remove their own records, so point them at a development database rather than production.
+They create and then clean up their own records, so point them at a development database rather than production. One exception: the revocation test leaves a revoked agent behind, because revocation is deliberately not deletion and there is no endpoint to remove one.
 
 ## Database migrations
 

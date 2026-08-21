@@ -102,6 +102,41 @@ describe('workspace endpoints', { skip }, () => {
     assert.equal(tooMany.status, 400, 'an unbounded limit should be rejected')
   })
 
+  it('records a deletion permanently, including what was destroyed', async () => {
+    const created = await call('/api/v1/memories', {
+      method: 'POST',
+      body: JSON.stringify({ title: `audit probe ${Date.now()}`, content: 'created to be deleted' }),
+    })
+    assert.equal(created.status, 201)
+    const { id, title } = created.body.data
+
+    assert.equal((await call(`/api/v1/memories/${id}`, { method: 'DELETE' })).status, 204)
+
+    const audit = await call('/api/v1/audit?limit=10')
+    assert.equal(audit.status, 200)
+    const entry = audit.body.data.find((row: { targetId: string }) => row.targetId === id)
+    assert.ok(entry, 'the deletion was not recorded')
+    assert.equal(entry.action, 'memory.delete')
+    // The row is gone, so the record has to carry what it was.
+    assert.equal(entry.summary, title)
+  })
+
+  it('keeps the audit log away from agent credentials', async () => {
+    const token = await call('/api/v1/agent-signup-tokens', { method: 'POST', body: JSON.stringify({ agentName: 'audit probe', expiresInMinutes: 15 }) })
+    const boot = await fetch(`${baseUrl}/api/v1/agents/bootstrap`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: token.body.data.token, agentName: 'audit probe' }),
+    })
+    const { agent, apiKey } = (await boot.json()).data
+
+    try {
+      const asAgent = await fetch(`${baseUrl}/api/v1/audit`, { headers: { authorization: `Bearer ${apiKey}` } })
+      assert.equal(asAgent.status, 401, 'an agent must not be able to read the record of its own actions')
+    } finally {
+      await call(`/api/v1/agents/${agent.id}`, { method: 'DELETE' })
+    }
+  })
+
   it('closes the maintenance route when no cron secret is configured', async () => {
     const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
     // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.
@@ -142,6 +177,8 @@ describe('workspace endpoints', { skip }, () => {
     const created = await call('/api/v1/api-keys', { method: 'POST', body: JSON.stringify({ name: `quota test ${Date.now()}`, scopes: ['memory:read'] }) })
     assert.equal(created.status, 201)
     const key = created.body.data.key
+    // Look the key up so it can be revoked afterwards; creation returns the secret, not the row id.
+    const keyId = (await call('/api/v1/api-keys')).body.data.find((row: { prefix: string }) => row.prefix === created.body.data.prefix)?.id
 
     // The cap is 120 per minute; 130 requests must cross it.
     const codes: number[] = []
@@ -156,6 +193,8 @@ describe('workspace endpoints', { skip }, () => {
 
     const session = await call('/api/v1/memories?limit=1')
     assert.equal(session.status, 200, 'the owner session must not share the credential quota')
+
+    if (keyId) await call(`/api/v1/api-keys/${keyId}`, { method: 'DELETE' })
   })
 
   it('finds a memory by a word stem the old substring search would have missed', async () => {
