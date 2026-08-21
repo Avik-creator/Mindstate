@@ -1,64 +1,42 @@
-import { Analytics } from '@vercel/analytics/next'
-import type { Metadata, Viewport } from 'next'
-import { Geist, Source_Code_Pro } from 'next/font/google'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import './globals.css'
-import { cn } from "@/lib/utils";
+// For adding custom fonts with other frameworks, see:
+// https://tailwindcss.com/docs/font-family
+import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Lora, Roboto_Mono } from "next/font/google";
+import "./globals.css";
 
-const sourceCodePro = Source_Code_Pro({ subsets: ['latin'], variable: '--font-source-code-pro' })
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
+const fontSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const fontSerif = Lora({
+  subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const fontMono = Roboto_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://mindstate.avikmukherjee.com'),
-  title: 'Mindstate — Private agent memory',
-  description: 'Capture, search, and share durable context across agent sessions.',
-  alternates: { canonical: '/' },
-  openGraph: {
-    title: 'Mindstate — Private agent memory',
-    description: 'Capture, search, and share durable context across agent sessions.',
-    url: 'https://mindstate.avikmukherjee.com',
-    siteName: 'Mindstate',
-    type: 'website',
-    images: [{
-      url: '/mindstate-og.png',
-      width: 1200,
-      height: 630,
-      alt: 'Mindstate — one place for agents to remember, work, and hand off',
-    }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Mindstate — Private agent memory',
-    description: 'Capture, search, and share durable context across agent sessions.',
-    images: ['/mindstate-og.png'],
-  },
-  applicationName: 'Mindstate',
-  generator: 'Mindstate',
-  icons: {
-    icon: [{ url: '/mindstate-icon-source.png', type: 'image/png' }],
-    shortcut: '/mindstate-icon-source.png',
-    apple: '/mindstate-icon-source.png',
-  },
-  manifest: '/manifest.webmanifest',
-}
-
-export const viewport: Viewport = {
-  colorScheme: 'dark',
-  themeColor: '#1c1c27',
-  userScalable: true,
-}
+  metadataBase: new URL("https://mindstate.avikmukherjee.com"),
+  title: "Mindstate — Shared memory for coding agents",
+  description: "Persistent project memory that travels between your coding agents.",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn('dark bg-background', sourceCodePro.variable, geist.variable)}>
-      <body className="font-sans antialiased">
-        <TooltipProvider>{children}</TooltipProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+    <html lang="en">
+      <body
+        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
+      >
+        {children}
       </body>
     </html>
-  )
+  );
 }
