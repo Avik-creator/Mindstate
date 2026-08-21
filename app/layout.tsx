@@ -43,8 +43,8 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'dark',
-  themeColor: '#1c1c27',
+  colorScheme: 'light',
+  themeColor: '#ffffff',
   userScalable: true,
 }
 
@@ -54,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={cn('dark bg-background', sourceCodePro.variable, geist.variable)}>
+    <html lang="en" className={cn('bg-background', sourceCodePro.variable, geist.variable)}>
       <body className="font-sans antialiased">
         <TooltipProvider>{children}</TooltipProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
