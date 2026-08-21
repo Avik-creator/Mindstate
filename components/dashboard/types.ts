@@ -49,6 +49,7 @@ export type Agent = {
   capabilities: string[]
   confidence: string
   lastSeenAt: string | null
+  revokedAt: string | null
 }
 
 export type ApiKey = {
@@ -72,6 +73,8 @@ export type Summary = {
   openHandoffs: number
   sessions: { live: number; stale: number; completed: number }
 }
+
+export const MEMORY_TYPES: Memory['type'][] = ['decision', 'context', 'preference', 'handoff']
 
 export const VIEWS: View[] = ['Overview', 'Memories', 'Projects', 'Sessions', 'Handoffs', 'Agents']
 

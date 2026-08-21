@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { issueAgentSignupToken } from '@/lib/application/agent-service'
 import { signupTokenCreateSchema, validationError } from '@/lib/application/contracts'
-import { actorFromRequest } from '@/lib/dal/request-actor'
+import { apiGuard } from '@/lib/dal/api-guard'
 
 export async function POST(request: Request) {
-  const actor = await actorFromRequest(request)
-  if (!actor || actor.credentialId) return NextResponse.json({ error: { code: 'SESSION_REQUIRED', message: 'Owner session authentication required' } }, { status: 401 })
+  const { actor, response } = await apiGuard(request, undefined, { sessionOnly: true })
+  if (!actor) return response
   const parsed = signupTokenCreateSchema.safeParse(await request.json().catch(() => null))
   if (!parsed.success) return NextResponse.json(validationError(parsed.error), { status: 400 })
   const data = await issueAgentSignupToken(actor.userId, parsed.data)

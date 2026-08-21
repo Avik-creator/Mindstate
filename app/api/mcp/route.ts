@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
+import { consumeApiQuota } from '@/lib/dal/api-rate-limit'
 import { actorFromRequest, can } from '@/lib/dal/request-actor'
 import { memoryService, sessionService } from '@/lib/application/container'
 import { memoryInputSchema, memoryTypeSchema } from '@/lib/application/memory-schema'
@@ -99,6 +100,10 @@ const mcp = createMcpHandler((server) => {
 async function handler(request: Request) {
   const requestActor = await actorFromRequest(request, { bearerOnly: true })
   if (!requestActor) return Response.json({ error: 'Unauthorized' }, { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="Mindstate MCP"' } })
+  if (requestActor.credentialId) {
+    const quota = await consumeApiQuota(requestActor.credentialId)
+    if (!quota.allowed) return Response.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(quota.retryAfter) } })
+  }
   return actorContext.run(requestActor, () => mcp(request))
 }
 

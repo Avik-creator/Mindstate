@@ -1,10 +1,11 @@
 import { Badge } from '@/components/ui/badge'
 import { relativeTime } from '@/components/dashboard/api'
 import { ConfirmAction } from '@/components/dashboard/confirm-action'
+import { EditMemoryDialog } from '@/components/dashboard/edit-memory-dialog'
 import { Empty, NoMatches } from '@/components/dashboard/states'
-import type { Memory } from '@/components/dashboard/types'
+import type { Memory, Project } from '@/components/dashboard/types'
 
-export function MemoryList({ items, query, refresh }: { items: Memory[]; query?: string; refresh: () => Promise<void> }) {
+export function MemoryList({ items, projects, query, refresh }: { items: Memory[]; projects: Project[]; query?: string; refresh: () => Promise<void> }) {
   if (!items.length) return query ? <NoMatches label="memories" query={query} /> : <Empty label="memories" />
 
   return (
@@ -16,6 +17,8 @@ export function MemoryList({ items, query, refresh }: { items: Memory[]; query?:
               <h3 className="text-sm font-medium">{memory.title}</h3>
               <Badge variant="outline" className="capitalize">{memory.type}</Badge>
             </div>
+            <div className="flex shrink-0 items-center gap-1">
+            <EditMemoryDialog memory={memory} projects={projects} refresh={refresh} />
             <ConfirmAction
               trigger="Delete"
               title={`Delete “${memory.title}”?`}
@@ -25,6 +28,7 @@ export function MemoryList({ items, query, refresh }: { items: Memory[]; query?:
               url={`/api/v1/memories/${memory.id}`}
               refresh={refresh}
             />
+            </div>
           </div>
           <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">{memory.content}</p>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-muted-foreground">

@@ -84,7 +84,7 @@ export const workspaceService = {
     if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
     const [row] = await db.update(handoffs).set({ ...input, updatedAt: new Date() }).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).returning(); return row ?? null
   },
-  async listAgents(actor: Actor) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, lastSeenAt: agents.lastSeenAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)) },
+  async listAgents(actor: Actor) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, lastSeenAt: agents.lastSeenAt, revokedAt: agents.revokedAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)) },
   async recordAgentTelemetry(actor: Actor, input: z.infer<typeof agentTelemetrySchema>) {
     if (!actor.agentId) throw new Error('AGENT_REQUIRED')
     const evidence = [...new Set([input.runtimeName, ...input.capabilities, ...input.signals].filter(Boolean) as string[])]

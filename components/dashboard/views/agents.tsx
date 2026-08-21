@@ -1,10 +1,11 @@
 import { Bot } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { relativeTime } from '@/components/dashboard/api'
+import { ConfirmAction } from '@/components/dashboard/confirm-action'
 import { Empty, NoMatches } from '@/components/dashboard/states'
 import type { Agent } from '@/components/dashboard/types'
 
-export function AgentList({ items, query }: { items: Agent[]; query?: string }) {
+export function AgentList({ items, query, refresh }: { items: Agent[]; query?: string; refresh: () => Promise<void> }) {
   if (!items.length) return query ? <NoMatches label="agents" query={query} /> : <Empty label="agents" />
 
   return (
@@ -24,6 +25,19 @@ export function AgentList({ items, query }: { items: Agent[]; query?: string }) 
           <span className="font-mono text-[10px] uppercase text-muted-foreground" title="Derived from what the agent reported about itself">
             {agent.confidence} confidence · self-reported
           </span>
+          {agent.revokedAt ? (
+            <Badge variant="outline">Revoked {relativeTime(agent.revokedAt)}</Badge>
+          ) : (
+            <ConfirmAction
+              trigger="Revoke"
+              title={`Revoke ${agent.name}?`}
+              description="The agent is disabled and every key issued to it stops working immediately. Its memories and sessions are kept."
+              confirmLabel="Revoke agent"
+              pendingLabel="Revoking…"
+              url={`/api/v1/agents/${agent.id}`}
+              refresh={refresh}
+            />
+          )}
         </article>
       ))}
     </div>
