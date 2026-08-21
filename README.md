@@ -199,7 +199,7 @@ Point an MCP client at:
 https://YOUR_DOMAIN/api/mcp
 ```
 
-Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer credentials only; browser session cookies are rejected. Fourteen tools cover memory search and capture, projects, handoffs including claiming and releasing them, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the full integration and credential-safety guide.
+Pass the same bearer token in the `Authorization` header. `/api/mcp` accepts bearer credentials only; browser session cookies are rejected. Sixteen tools cover memory search and capture, memory relationships, projects, handoffs including claiming and releasing them, session presence, and agent-context reporting. See [`SKILL.md`](./SKILL.md) for the full integration and credential-safety guide.
 
 ## API reference
 
@@ -227,6 +227,13 @@ Owner endpoints require a browser session and reject agent keys, so a key can ne
 | `/api/v1/sessions/{id}/heartbeat` | `POST` | `session:write` |
 | `/api/v1/workspace/summary` | `GET` | `memory:read` |
 | `/api/v1/agents/telemetry` | `POST` | `agent:write`, agent credential only |
+| `/api/v1/agents` | `GET` | Owner session. |
+| `/api/v1/agents/{id}` | `DELETE` | Owner session. Revokes the agent and every key it holds. |
+| `/api/v1/agent-signup-tokens` | `POST` | Owner session. |
+| `/api/v1/api-keys` | `GET` `POST` | Owner session. |
+| `/api/v1/api-keys/{id}` | `DELETE` | Owner session. |
+| `/api/v1/audit` | `GET` | Owner session. |
+| `/api/v1/maintenance` | `GET` | `CRON_SECRET` bearer. Closed when the variable is unset. |
 | `/api/v1/agents` | `GET` | Owner session |
 | `/api/v1/agents/{id}` | `DELETE` | Owner session. Revokes the agent and all its keys. |
 | `/api/v1/api-keys` | `GET` `POST` | Owner session |
