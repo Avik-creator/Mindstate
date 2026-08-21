@@ -278,7 +278,16 @@ it. Over MCP the same operations are `claim_handoff` and `release_handoff`.
 
 ## Agent presence
 
-Agents should start a session before meaningful work, send a heartbeat every 30–60 seconds, and complete the session when work ends. A session reads as stale after 90 seconds without a heartbeat, which indicates a stopped or disconnected agent rather than an application error.
+Agents should start a session before meaningful work, send a heartbeat every 30 seconds, and complete the session when work ends. Sixty seconds is the slowest cadence the server is tuned for.
+
+Two windows follow from that, deliberately different:
+
+| Window | After | Effect |
+| --- | --- | --- |
+| Presence | 90s of silence | The session reads as stale in the dashboard. A display hint, nothing more. |
+| Claim lease | 180s of silence | A claimed handoff returns to the pool. |
+
+Presence is the more sensitive of the two on purpose. Dimming a dot early costs nothing, while taking work from an agent that is merely slow causes exactly the duplicate effort claiming exists to prevent. Claiming work still requires a genuinely live session, so a claim is harder to take than to keep.
 
 ## Security notes
 

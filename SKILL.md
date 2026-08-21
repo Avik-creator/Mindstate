@@ -61,7 +61,7 @@ Validation failures use `{ "error": { "code": "VALIDATION_ERROR", "message": "..
 
 ## Live session lifecycle
 
-A session is live only while the agent is actively sending heartbeats. Start one before meaningful work, send a heartbeat every 30–60 seconds, attach captured memories with its `sessionId`, and complete it when work stops.
+A session is live only while the agent is actively sending heartbeats. Start one before meaningful work, send a heartbeat every 30 seconds, attach captured memories with its `sessionId`, and complete it when work stops. Presence reads stale after 90 seconds of silence; a claimed handoff is only released after 180 seconds, so a slow heartbeat dims your dot before it costs you your work.
 
 - `POST /api/v1/sessions` with `{ "title": "...", "projectId": null, "agent": "...", "metadata": {} }` — start a session (`session:write`).
 - `GET /api/v1/sessions?limit=30` and `GET /api/v1/sessions/<uuid>` — inspect owner-scoped sessions (`session:read`).

@@ -49,7 +49,7 @@ const mcp = createMcpHandler((server) => {
     title: 'Start session', description: 'Start a durable agent work session with live presence.', inputSchema: sessionCreateSchema,
   }, async (input) => {
     const data = await sessionService.start(actor('session:write'), input)
-    return { content: [{ type: 'text', text: `Started session ${data.id}. Heartbeat every 30-60 seconds.` }], structuredContent: { session: data } }
+    return { content: [{ type: 'text', text: `Started session ${data.id}. Heartbeat every 30 seconds to stay live.` }], structuredContent: { session: data } }
   })
 
   server.registerTool('list_sessions', {
