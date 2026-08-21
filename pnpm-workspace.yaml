@@ -1,2 +1,4 @@
 overrides:
   hono: 4.12.25
+  # postcss pins a nanoid with an infinite-loop advisory; the fix is a patch release.
+  nanoid: ^3.3.18
