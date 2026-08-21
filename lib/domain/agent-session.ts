@@ -1,4 +1,5 @@
 import type { Actor } from '@/lib/domain/memory'
+import type { PageRequest } from '@/lib/domain/pagination'
 
 // A session with no heartbeat inside this window reads as stale rather than live.
 export const SESSION_STALE_AFTER_MS = 90_000
@@ -32,7 +33,8 @@ export type CreateSessionInput = {
 
 export interface AgentSessionRepository {
   create(actor: Actor, input: CreateSessionInput): Promise<AgentSessionRecord>
-  list(actor: Actor, limit: number): Promise<AgentSessionRecord[]>
+  list(actor: Actor, page: PageRequest): Promise<AgentSessionRecord[]>
+  count(actor: Actor): Promise<number>
   findById(actor: Actor, id: string): Promise<AgentSessionRecord | null>
   heartbeat(actor: Actor, id: string): Promise<AgentSessionRecord | null>
   complete(actor: Actor, id: string): Promise<AgentSessionRecord | null>

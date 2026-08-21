@@ -3,6 +3,11 @@ import { SCOPES } from '@/lib/domain/scopes'
 
 export const scopeSchema = z.enum(SCOPES)
 export const scopesSchema = z.array(scopeSchema).min(1).max(SCOPES.length).transform((scopes) => [...new Set(scopes)])
+export const pageQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(30),
+  offset: z.coerce.number().int().min(0).default(0),
+})
+
 export const agentNameSchema = z.string().trim().min(2).max(80)
 export const idSchema = z.string().uuid()
 

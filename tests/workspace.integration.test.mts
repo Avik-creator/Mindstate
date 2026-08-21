@@ -76,6 +76,32 @@ describe('workspace endpoints', { skip }, () => {
     }
   })
 
+  it('pages every list resource, not just memories', async () => {
+    // Handoffs were capped at 100 with no offset, the same bug memories had.
+    for (const resource of ['memories', 'sessions', 'projects', 'handoffs', 'agents']) {
+      const first = await call(`/api/v1/${resource}?limit=1&offset=0`)
+      assert.equal(first.status, 200, `${resource} should accept paging`)
+      assert.ok(first.body.page, `${resource} is missing its page envelope`)
+      assert.equal(first.body.page.limit, 1)
+      assert.ok(first.body.data.length <= 1, `${resource} ignored limit`)
+
+      if (first.body.page.total > 1) {
+        const second = await call(`/api/v1/${resource}?limit=1&offset=1`)
+        assert.equal(second.status, 200)
+        assert.notEqual(
+          JSON.stringify(second.body.data[0]),
+          JSON.stringify(first.body.data[0]),
+          `${resource} returned the same row for offset 0 and 1`,
+        )
+      }
+    }
+  })
+
+  it('refuses a limit beyond the cap rather than honouring it', async () => {
+    const tooMany = await call('/api/v1/sessions?limit=5000')
+    assert.equal(tooMany.status, 400, 'an unbounded limit should be rejected')
+  })
+
   it('closes the maintenance route when no cron secret is configured', async () => {
     const anonymous = await fetch(`${baseUrl}/api/v1/maintenance`)
     // 404 when unconfigured, 401 when configured but unauthenticated. Never 200 without the secret.

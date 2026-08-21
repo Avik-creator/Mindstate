@@ -5,6 +5,7 @@ import { and, count, desc, eq, inArray } from 'drizzle-orm'
 import { db } from './client'
 import { agentSessions, memories } from './schema'
 import type { Actor } from '@/lib/domain/memory'
+import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
 import { SESSION_STALE_AFTER_MS, type AgentSessionRecord, type AgentSessionRepository, type CreateSessionInput, type SessionPresence } from '@/lib/domain/agent-session'
 
 type Row = typeof agentSessions.$inferSelect
@@ -23,8 +24,14 @@ export class PostgresAgentSessionRepository implements AgentSessionRepository {
     return record(row)
   }
 
-  async list(actor: Actor, limit: number) {
-    const rows = await db.select().from(agentSessions).where(eq(agentSessions.userId, actor.userId)).orderBy(desc(agentSessions.updatedAt)).limit(limit)
+  async count(actor: Actor) {
+    const [row] = await db.select({ value: count() }).from(agentSessions).where(eq(agentSessions.userId, actor.userId))
+    return Number(row?.value ?? 0)
+  }
+
+  async list(actor: Actor, page: PageRequest) {
+    const { limit, offset } = normalizePage(page)
+    const rows = await db.select().from(agentSessions).where(eq(agentSessions.userId, actor.userId)).orderBy(desc(agentSessions.updatedAt)).limit(limit).offset(offset)
     if (!rows.length) return []
     const totals = await db.select({ sessionId: memories.sessionId, value: count() }).from(memories).where(and(eq(memories.userId, actor.userId), inArray(memories.sessionId, rows.map((row) => row.id)))).groupBy(memories.sessionId)
     const byId = new Map(totals.map((item) => [item.sessionId, Number(item.value)]))

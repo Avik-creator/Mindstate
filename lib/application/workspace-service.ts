@@ -7,6 +7,7 @@ import { db } from '@/lib/infrastructure/db/postgres/client'
 import { agents, agentSessions, handoffs, memories, projects } from '@/lib/infrastructure/db/postgres/schema'
 import { SESSION_STALE_AFTER_MS } from '@/lib/domain/agent-session'
 import type { Actor } from '@/lib/domain/memory'
+import { normalizePage, type PageRequest } from '@/lib/domain/pagination'
 
 export const projectInputSchema = z.object({ name: z.string().trim().min(1).max(80), description: z.string().trim().max(500).default('') }).strict()
 export const handoffInputSchema = z.object({
@@ -55,12 +56,20 @@ export const workspaceService = {
     ])
     return { memories: memory.value, projects: project.value, agents: agent.value, openHandoffs: openHandoff.value, sessions: { live: liveSession.value, stale: staleSession.value, completed: completedSession.value } }
   },
-  async listProjects(actor: Actor) {
+  async listProjects(actor: Actor, page: PageRequest = {}) {
+    const bounds = normalizePage(page)
+    const [data, [total]] = await Promise.all([
+      this.projectRows(actor, bounds),
+      db.select({ value: count() }).from(projects).where(eq(projects.userId, actor.userId)),
+    ])
+    return { data, page: { ...bounds, total: Number(total?.value ?? 0) } }
+  },
+  projectRows(actor: Actor, bounds: { limit: number; offset: number }) {
     return db.select({ id: projects.id, name: projects.name, description: projects.description, createdAt: projects.createdAt, updatedAt: projects.updatedAt,
       memoryCount: sql<number>`(select count(*)::int from memories m where m."userId" = ${actor.userId} and m."projectId" = "projects"."id")`,
       sessionCount: sql<number>`(select count(*)::int from agent_sessions s where s."userId" = ${actor.userId} and s."projectId" = "projects"."id")`,
       handoffCount: sql<number>`(select count(*)::int from handoffs h where h."userId" = ${actor.userId} and h."projectId" = "projects"."id")`,
-    }).from(projects).where(eq(projects.userId, actor.userId)).orderBy(desc(projects.updatedAt))
+    }).from(projects).where(eq(projects.userId, actor.userId)).orderBy(desc(projects.updatedAt)).limit(bounds.limit).offset(bounds.offset)
   },
   async createProject(actor: Actor, input: z.infer<typeof projectInputSchema>) { const [row] = await db.insert(projects).values({ id: randomUUID(), userId: actor.userId, ...input }).returning(); return row },
   async updateProject(actor: Actor, id: string, input: z.infer<typeof projectInputSchema>) { const [row] = await db.update(projects).set({ ...input, updatedAt: new Date() }).where(and(eq(projects.id, id), eq(projects.userId, actor.userId))).returning(); return row ?? null },
@@ -73,7 +82,14 @@ export const workspaceService = {
     if (memory.value + session.value + handoff.value > 0) return { conflict: true }
     const [row] = await db.delete(projects).where(and(eq(projects.id, id), eq(projects.userId, actor.userId))).returning({ id: projects.id }); return row ?? null
   },
-  async listHandoffs(actor: Actor) { return db.select().from(handoffs).where(eq(handoffs.userId, actor.userId)).orderBy(desc(handoffs.updatedAt)).limit(100) },
+  async listHandoffs(actor: Actor, page: PageRequest = {}) {
+    const bounds = normalizePage(page)
+    const [data, [total]] = await Promise.all([
+      db.select().from(handoffs).where(eq(handoffs.userId, actor.userId)).orderBy(desc(handoffs.updatedAt)).limit(bounds.limit).offset(bounds.offset),
+      db.select({ value: count() }).from(handoffs).where(eq(handoffs.userId, actor.userId)),
+    ])
+    return { data, page: { ...bounds, total: Number(total?.value ?? 0) } }
+  },
   async createHandoff(actor: Actor, input: z.infer<typeof handoffInputSchema>) {
     if (input.projectId && !(await ownedProject(actor.userId, input.projectId))) throw new Error('PROJECT_NOT_FOUND')
     if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
@@ -84,7 +100,15 @@ export const workspaceService = {
     if (input.sessionId && !(await ownedSession(actor.userId, input.sessionId))) throw new Error('SESSION_NOT_FOUND')
     const [row] = await db.update(handoffs).set({ ...input, updatedAt: new Date() }).where(and(eq(handoffs.id, id), eq(handoffs.userId, actor.userId))).returning(); return row ?? null
   },
-  async listAgents(actor: Actor) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, lastSeenAt: agents.lastSeenAt, revokedAt: agents.revokedAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)) },
+  async listAgents(actor: Actor, page: PageRequest = {}) {
+    const bounds = normalizePage(page)
+    const [data, [total]] = await Promise.all([
+      this.agentRows(actor, bounds),
+      db.select({ value: count() }).from(agents).where(eq(agents.userId, actor.userId)),
+    ])
+    return { data, page: { ...bounds, total: Number(total?.value ?? 0) } }
+  },
+  agentRows(actor: Actor, bounds: { limit: number; offset: number }) { return db.select({ id: agents.id, name: agents.name, status: agents.status, category: agents.category, runtimeName: agents.runtimeName, runtimeVersion: agents.runtimeVersion, capabilities: agents.capabilities, detectionSignals: agents.detectionSignals, confidence: agents.confidence, lastSeenAt: agents.lastSeenAt, revokedAt: agents.revokedAt, createdAt: agents.createdAt }).from(agents).where(eq(agents.userId, actor.userId)).orderBy(desc(agents.lastSeenAt), desc(agents.createdAt)).limit(bounds.limit).offset(bounds.offset) },
   async recordAgentTelemetry(actor: Actor, input: z.infer<typeof agentTelemetrySchema>) {
     if (!actor.agentId) throw new Error('AGENT_REQUIRED')
     const evidence = [...new Set([input.runtimeName, ...input.capabilities, ...input.signals].filter(Boolean) as string[])]
